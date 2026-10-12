@@ -46,6 +46,7 @@ export const CAR = {
   gripAssist: 1.15, // fracao da aderencia que o auxilio de direcao deixa o volante usar (evita rodar so de esterçar)
   driftLoss: 0.2, // drift leve: fracao da aderencia traseira perdida em curva forte e rapida
   driftSpeed: 22, // velocidade a partir da qual o drift comeca a valer
+  slipDamp: 14, // amortece o giro quando o carro anda de lado: segura o drift sem rodar
   steerCurve: 0.8, // <1 deixa o volante mais sensivel perto do centro (|s|^curve)
   catchupBoost: 0.2, // retardatario perto de sair do quadro ganha ate +20% de velocidade
   alphaSatF: 0.16, // rad: deriva em que o pneu dianteiro satura
@@ -58,6 +59,7 @@ export const CAR = {
   stunTime: 1.6,
   offroadMax: 28, // distancia alem da borda da estrada em que o carro explode
   crashSpeed: 20, // velocidade vertical de pouso (u/s) acima da qual o carro capota
+  rampLandTol: 1.35, // quem decolou de uma rampa aguenta um pouso x vezes mais forte antes de capotar
   wreckMass: 2.5, // a carcaca e bem mais pesada que o carro
   boostMass: 1.7, // com nitro o carro pesa mais nas batidas: da para empurrar quem esta na frente para fora do quadro
   boostGrip: 1.6, // com nitro: aderencia lateral e de tracao multiplicada (carro firme, sem escorregar)
@@ -99,7 +101,7 @@ export function placeCar(car, track, progress, d, at = null) {
   car.vy = 0;
   car.spin = car.spinVel = 0;
   car.pitch = car.roll = car.ox = car.oz = 0;
-  car.air = false; car.asleep = false; car.thrust = 0; car.restT = 0; car.grounded = true; car.upY = 1;
+  car.air = false; car.rampJump = false; car.asleep = false; car.thrust = 0; car.restT = 0; car.grounded = true; car.upY = 1;
   car.q = orient(car.h, 0, 0);
   car.catchup = car.destab = 0;
   car.throttle = 1;
@@ -290,7 +292,7 @@ function airStep(car, dt) {
 /** Altura: segue o chao (rampa/plateau) e decola quando o chao some mais rapido que a gravidade permite. */
 function verticalStep(car, track, dt, events, px, pz) {
   const near = car.near, G = CAR.gravity, step = track.stepUp ?? 0.8;
-  if (track.map) track.map.groundAt(car.x, car.z, car.y, GP); else track.groundFromNear(near, GP);
+  if (track.map) track.map.groundAt(car.x, car.z, car.y, GP); else track.groundFromNear(near, GP, car.x, car.z);
   if (car.locked) { car.y = GP.y; car.vy = 0; car.air = false; return; }
   // degrau alto demais a frente (face da falesia): bate e volta
   if (GP.y - car.y > step) {
@@ -300,13 +302,16 @@ function verticalStep(car, track, dt, events, px, pz) {
     car.vx *= -0.25; car.vz *= -0.25;
     car.contact = true;
     track.nearest(car.x, car.z, near.idx, near);
-    if (track.map) track.map.groundAt(car.x, car.z, car.y, GP); else track.groundFromNear(near, GP);
+    if (track.map) track.map.groundAt(car.x, car.z, car.y, GP); else track.groundFromNear(near, GP, car.x, car.z);
   }
   if (!car.air) {
     const yFree = car.y + car.vy * dt - 0.5 * G * dt * dt;
     // pistas de mapa: degraus pequenos para baixo (rampas feitas de pisos 3D empilhados) nao fazem o carro decolar
     const tol = track.map ? step * 0.6 : 0.03; // folga: descidas suaves colam no chao em vez de quicar
-    if (GP.y < yFree - tol && car.y - GP.y > tol) car.air = true; // o chao fugiu: voo balistico com a velocidade da rampa
+    if (GP.y < yFree - tol && car.y - GP.y > tol) { // o chao fugiu: voo balistico com a velocidade da rampa
+      car.air = true;
+      car.rampJump = car.vy > 3; // saiu subindo (lábio de rampa): pouso tolerante; queda de plateau continua capotando
+    }
     else {
       car.vy = car.vy * 0.2 + ((GP.y - car.y) / dt) * 0.8;
       if (track.map) car.vy = Math.max(-30, Math.min(30, car.vy));
@@ -318,13 +323,21 @@ function verticalStep(car, track, dt, events, px, pz) {
     car.vy -= G * dt;
     car.y += car.vy * dt;
     if (car.y <= GP.y) {
-      const impact = car.vy;
+      // impacto relativo ao chao: velocidade vertical menos a do piso sob o carro, na normal da superficie
+      // (pousar na descida da rampa nao conta a queda inteira)
+      const groundVy = -(GP.nx * car.vx + GP.nz * car.vz) / Math.max(0.2, GP.ny);
+      const impact = Math.min(0, (car.vy - groundVy) * GP.ny);
       car.y = GP.y;
       // com nitro o carro e estavel: so um pouso muito mais violento o faz capotar
       const boosted = car.boost > 0;
-      if (impact < -CAR.crashSpeed * (boosted ? 1.4 : 1) || (!boosted && impact < -7 && Math.abs(car.pitch - groundPitch(car, track)) > 0.75)) crashLand(car, impact, events);
+      const ramp = car.rampJump;
+      car.rampJump = false;
+      const limit = CAR.crashSpeed * (boosted ? 1.4 : ramp ? CAR.rampLandTol : 1);
+      if (impact < -limit || (!boosted && !ramp && impact < -7 && Math.abs(car.pitch - groundPitch(car, track)) > 0.75)) crashLand(car, impact, events);
       else if (impact < -4) {
-        car.vy = -impact * 0.18; // quique da suspensao
+        // quique da suspensao, relativo ao piso: em face de subida o piso ja sobe `groundVy`; sem somar isso o carro
+        // re-pousava a cada passo (quicando ate sair da rampa)
+        car.vy = -impact * 0.18;
         if (events) events.push({ type: 'land', car: car.id, x: car.x, z: car.z, strength: Math.min(1, -impact / 14) });
       } else { car.air = false; car.vy = Math.min(0, car.gvy ?? 0) * 0.5; } // pouso suave: segue a inclinacao do chao
     }
@@ -388,7 +401,9 @@ function driveStep(car, surf, dt) {
   // traseira atingida: perde aderencia por um instante e o carro roda com facilidade
   const fmaxR0 = mu * CAR.g * REAR_LOAD * bg * (1 - 0.6 * Math.min(1, car.destab / 0.5));
   const driftK = Math.min(1, Math.max(0, (Math.abs(car.steerSm) - 0.55) / 0.35)) * Math.min(1, Math.max(0, (u - CAR.driftSpeed) / 12));
-  const fmaxRd = fmaxR0 * (1 - CAR.driftLoss * driftK * (car.boost > 0 ? 0.4 : 1));
+  // o drift entra e sai aos poucos (sem degrau de aderencia que faria o carro rodar)
+  car.drift = (car.drift || 0) + (driftK - (car.drift || 0)) * (1 - Math.exp(-(driftK > (car.drift || 0) ? 2.5 : 6) * dt));
+  const fmaxRd = fmaxR0 * (1 - CAR.driftLoss * car.drift * (car.boost > 0 ? 0.4 : 1));
 
   // volante suavizado; menos esterco em alta velocidade
   car.steerSm += Math.max(-CAR.steerRate * dt, Math.min(CAR.steerRate * dt, car.steer - car.steerSm));
@@ -418,7 +433,7 @@ function driveStep(car, surf, dt) {
   const tractionCap = fmaxR0 * 1.15;
   fx_drive = Math.max(-fmaxR0 * 1.2, Math.min(tractionCap, fx_drive));
   // controle de tracao: tira o pe quando o carro derrapa (evita sobreviragem incontrolavel)
-  if (fx_drive > 0) fx_drive *= Math.max(0.12, 1 - 1.7 * (Math.abs(v) / (Math.abs(u) + 3)));
+  if (fx_drive > 0) fx_drive *= Math.max(0.55, 1 - 0.9 * (Math.abs(v) / (Math.abs(u) + 3)));
   car.drive = fx_drive;
 
   // forcas laterais dos pneus (angulo de deriva), regularizado em baixa velocidade
@@ -434,7 +449,8 @@ function driveStep(car, surf, dt) {
   const cd = Math.cos(delta), sd = Math.sin(delta);
   const du = fx_drive - fyF * sd - 0.35 * u + v * w;
   const dv = fyF * cd + fyR - u * w;
-  const dw = (CAR.a * fyF * cd - CAR.b * fyR) / CAR.inertia - (0.9 + 0.55 * Math.abs(w)) * w;
+  const dw = (CAR.a * fyF * cd - CAR.b * fyR) / CAR.inertia - (0.9 + 0.55 * Math.abs(w)) * w
+    + CAR.slipDamp * Math.max(-0.3, Math.min(0.3, v / (Math.abs(u) + 6))) * Math.min(1, Math.abs(u) / 15);
   car.slip = Math.abs(v);
 
   u += du * dt;
@@ -547,6 +563,7 @@ function mapSurface(car, track) {
         } else if (car.speed > 0.5 && car.speed < CAR.cruise) { car.vx *= CAR.cruise / car.speed; car.vz *= CAR.cruise / car.speed; }
         car.vy = rec ? rec.vy : 14;
         car.air = true;
+        car.rampJump = true;
         car.y += 0.02;
       }
       if (rec || MI.spring || MI.dash) car.padCd = 0.5;

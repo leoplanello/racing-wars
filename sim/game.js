@@ -172,7 +172,10 @@ export class Game {
     car.item = null;
     if (car.freeze > 0) { this.events.push({ type: 'unfreeze', car: car.id, x: car.x, y: car.y, z: car.z, shatter: true }); car.freeze = 0; }
     this.deaths.push(car.id);
-    this.events.push({ type: 'dead', car: car.id, cause, x: car.x, z: car.z });
+    // pontos provisorios da rodada (o placar so muda no fim): 1o a morrer -2, demais -1, penultimo +1
+    const left = this.cars.filter((c) => c.alive).length;
+    const pd = this.deaths.length === 1 ? -2 : left <= 1 ? 1 : -1;
+    this.events.push({ type: 'dead', car: car.id, cause, x: car.x, z: car.z, pd });
     if (car.state === 'falling') return; // cai na agua: some depois da animacao
     // qualquer outra morte deixa uma CARCACA na pista ate o proximo spawn. Ela mantem a velocidade (e o
     // motor "preso" ainda empurra um pouco): quem decide o giro e o capotamento e a fisica, nao um valor fixo.
@@ -319,7 +322,7 @@ export class Game {
           hit = true;
         }
       }
-      if (w.y < 0.3 && (tr.inWater(nr) || (tr.hasChasm && tr.chasmAt(nr)))) w.dead = true; // cai no rio/precipicio e some
+      if (w.y < 0.3 && (tr.inWater(nr) || (tr.hasChasm && tr.chasmAt(nr)) || (tr.terrain && tr.terrain.waterAt(w.x, w.z)))) w.dead = true; // cai no rio/precipicio e some
     }
     return hit;
   }
@@ -386,12 +389,14 @@ export class Game {
         // rio ao lado da ponte: afunda; longe demais da estrada: explode
         if (c.state !== 'falling' && c.y <= 0.3 && this.track.inWater(c.near)) startFall(c, this.events, 'fall');
         else if (c.state !== 'falling' && c.y <= 0.3 && this.track.hasChasm && this.track.chasmAt(c.near)) startFall(c, this.events, 'chasm');
+        else if (c.state !== 'falling' && c.y <= 0.3 && this.track.terrain && this.track.terrain.waterAt(c.x, c.z)) startFall(c, this.events, 'fall'); // mar, rio, desfiladeiro
         if (c.state !== 'falling' && !this.debug.noCut && this.offroadRatio(c) > 1) this.explodeCar(c, 'offroad');
       }
       if (c.state === 'wreck' && c.near && c.y <= 0.3) {
         // carcaca jogada no rio/precipicio tambem cai (nao fica flutuando)
         if (this.track.inWater(c.near)) startFall(c, this.events, 'fall');
         else if (this.track.hasChasm && this.track.chasmAt(c.near)) startFall(c, this.events, 'chasm');
+        else if (this.track.terrain && this.track.terrain.waterAt(c.x, c.z)) startFall(c, this.events, 'fall');
       }
       // agua: some ao fim da animacao; precipicio: despenca ate sair do enquadramento (corte da camera), com limite de seguranca
       if (c.alive && c.state === 'falling' && (c.fallCause !== 'chasm' || c.fall > RULES.chasmFallMax)) this.kill(c, c.fallCause === 'chasm' ? 'chasm' : 'fall');
@@ -677,7 +682,8 @@ export class Game {
 
   endRound() {
     const alive = this.cars.filter((c) => c.alive);
-    const survivorId = alive.length ? alive[0].id : this.deaths[this.deaths.length - 1];
+    // sem vivos e sem mortes registradas (debug: X mata todos, R limpa `deaths`) cai no primeiro carro
+    const survivorId = alive.length ? alive[0].id : (this.deaths.length ? this.deaths[this.deaths.length - 1] : this.cars[0].id);
     this.survivorId = survivorId;
     const delta = scoreRound(this.deaths, survivorId, this.ids);
     for (const [id, d] of Object.entries(delta)) {

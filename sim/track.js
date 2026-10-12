@@ -1,3 +1,5 @@
+import { buildTerrain } from './terrain.js';
+
 // Pista: spline fechada amostrada uniformemente. Coordenadas: x para a direita, z para baixo (tela).
 // Rumo h: frente = (cos h, sin h); aumentar h = virar para a direita. Normal "direita" = (-tz, tx).
 
@@ -117,6 +119,7 @@ export function buildTrack(def, spacing = 1) {
   const HSKIN = new Uint8Array(N); // 1 = a colina e uma carreta (visual: chassi de aco, rodas)
   const smooth = (t) => t * t * (3 - 2 * t);
   const Ltot = N * ds;
+  const BASEH = ELEV.slice(); // piso antes das colinas (`add: true` soma a altura da colina a ele: rampa sobre uma descida)
   for (const h of def.hills || []) {
     const rise = h.rise ?? 24, fall = h.fall ?? 24;
     const a = h.from * Ltot, flat = ((((h.to - h.from) % 1) + 1) % 1) * Ltot;
@@ -128,7 +131,7 @@ export function buildTrack(def, spacing = 1) {
       if (u < rise) k = fall > 0 ? smooth(u / rise) : (u / rise) * (u / rise); // rampa de salto: curva que empina ate o labio
       else if (u < rise + flat) k = 1;
       else k = fall > 0 ? 1 - smooth((u - rise - flat) / fall) : 0;
-      ELEV[i] = Math.max(ELEV[i], h.height * k);
+      ELEV[i] = Math.max(ELEV[i], (h.add ? BASEH[i] : 0) + h.height * k);
       if (h.rails === false) RAILS[i] = 0;
       if (h.skin === 'truck' && k > 0.02) HSKIN[i] = 1;
       if (h.skin === 'viaduct' && k > 0.02) HSKIN[i] = 2;
@@ -248,11 +251,15 @@ export function buildTrack(def, spacing = 1) {
     groundAt(x, z, hint, out = { y: 0, nx: 0, ny: 1, nz: 0 }) {
       const nr = this._gn || (this._gn = this.newNear());
       this.nearest(x, z, hint ?? -1, nr);
-      return this.groundFromNear(nr, out);
+      return this.groundFromNear(nr, out, x, z);
     },
     /** Igual a groundAt, mas a partir de um `near` ja calculado. */
-    groundFromNear(nr, out) {
-      if (Math.abs(nr.d) <= HW[nr.idx] + this.verge) {
+    groundFromNear(nr, out, x, z) {
+      if (Math.abs(nr.d) > HW[nr.idx] + this.verge && this.terrain && x !== undefined && this.terrain.contains(x, z)) {
+        // fora da estrada: relevo da montanha (so pistas com `def.terrain`)
+        out.y = this.terrain.heightAt(x, z);
+        this.terrain.normalAt(x, z, out);
+      } else if (Math.abs(nr.d) <= HW[nr.idx] + this.verge) {
         out.y = this.elevAt(nr.s);
         const e = this.slopeAt(nr.s);
         const l = Math.hypot(e, 1);
@@ -310,6 +317,17 @@ export function buildTrack(def, spacing = 1) {
       const nr = this.nearest(x, z, -1, this._sz || (this._sz = this.newNear()));
       return (SOLID[nr.idx] & (nr.d >= 0 ? 2 : 1)) !== 0 && Math.abs(nr.d) < HW[nr.idx] + this.verge + reach;
     },
+    /** Ha pista com superficie `type` a menos de `reach` de (x,z)? (so para cenario) */
+    nearSurface(x, z, type, reach = 140) {
+      const cache = this._sl || (this._sl = {});
+      let list = cache[type];
+      if (!list) { list = []; for (let i = 0; i < N; i += 4) if (SURFACE[i] === type) list.push(i); cache[type] = list; }
+      for (const i of list) {
+        const dx = x - X[i], dz = z - Z[i];
+        if (dx * dx + dz * dz < reach * reach) return true;
+      }
+      return false;
+    },
     /** A pista tem `openZones`? */
     hasOpen: OPEN.some((v) => v !== 0),
     riverHalf: def.riverHalf ?? 34,
@@ -329,5 +347,6 @@ export function buildTrack(def, spacing = 1) {
       return m;
     },
   };
+  track.terrain = buildTerrain(track);
   return track;
 }

@@ -689,6 +689,18 @@ test('rampa de salto: o carro decola de verdade, voa e pousa sem entrar no chao'
   assert.equal(car.state, 'run');
   assert.ok(Math.abs(car.y - groundY(car)) < 0.05, 'pousou');
   assert.ok(events.some((e) => e.type === 'land'));
+  assert.ok(!events.some((e) => e.crash), 'pouso de rampa nao capota');
+});
+
+test('rampa de salto: nao capota nem em velocidade acima da de cruzeiro', () => {
+  for (const sp of [42, 50, 55]) {
+    const car = runnerAt(0.36 * track.length);
+    car.vx *= sp / 42; car.vz *= sp / 42;
+    for (let i = 0; i < 480; i++) {
+      stepCar(car, track, DT, []);
+      assert.notEqual(car.state, 'stun', `capotou a ${sp} u/s no passo ${i}`);
+    }
+  }
 });
 
 test('area alta sem guardrail: da para cair; pouso brusco capota e o carro fica sobre o chao', () => {

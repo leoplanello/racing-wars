@@ -501,7 +501,7 @@ function handleEvents(events) {
   for (const e of events) {
     switch (e.type) {
       case 'countdown':
-        if (e.n === 3) { debris.clear(); fx.clearScorch(); }
+        if (e.n === 3) { debris.clear(); fx.clearScorch(); ui.fadeDeltas(); }
         world?.gantry.countdown(e.n);
         ui.banner(trafficLight(e.n), 1100);
         audio.play('count');
@@ -604,6 +604,7 @@ function handleEvents(events) {
       case 'dead': {
         const why = { fall: 'caiu no rio', chasm: 'caiu no precipício', cut: 'ficou para trás', mine: 'pisou numa mina', missile: 'levou um míssil', trail: 'passou no rastro do nitro', offroad: 'se perdeu no mato', pump: 'explodiu no posto', stuck: 'ficou preso' }[e.cause] || 'explodiu';
         ui.killfeed(`${nameOf(e.car)} ${why}`, hexOf(e.car));
+        if (g.mode !== 'race' && e.pd != null) ui.showDelta(e.car, e.pd);
         if (e.cause === 'cut') audio.play('cut');
         vib(e.car, [400]);
         break;
@@ -617,6 +618,7 @@ function handleEvents(events) {
       case 'respawn': if (e.cause !== 'fall') vib(e.car, [40]); break;
       case 'roundEnd': {
         world?.gantry.off();
+        for (const [id, dv] of Object.entries(e.delta)) ui.showDelta(Number(id), dv);
         const d = e.delta[e.survivor];
         ui.banner(`<div style="position:relative;top:22vh"><div class="mid" style="color:${hexOf(e.survivor)}">${nameOf(e.survivor)} sobreviveu!</div><div class="sub">+${d} pontos</div></div>`, 1100);
         audio.play('win');

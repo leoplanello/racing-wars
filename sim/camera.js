@@ -264,7 +264,7 @@ export class ChaseCamera {
 
   /** Altura do chao sob o carro (tabuleiro da pista; 0 fora dele). */
   groundOf(c, track) {
-    if (c.near && c.near.d !== undefined) return track.groundFromNear(c.near, this._g || (this._g = { y: 0, nx: 0, ny: 1, nz: 0 })).y;
+    if (c.near && c.near.d !== undefined) return track.groundFromNear(c.near, this._g || (this._g = { y: 0, nx: 0, ny: 1, nz: 0 }), c.x, c.z).y;
     return track.elevAt(c.near ? c.near.s : track.wrapS(c.progress));
   }
 

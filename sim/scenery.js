@@ -68,20 +68,21 @@ export function buildScenery(track, seed = 99) {
       const d = dist(x, z);
       if (d < clear + minD || d > maxD) continue;
       if (hasBridge && dist(x, z, true) < river + 4) continue;
-      if (track.chasmContains(x, z) || track.inSolidZone?.(x, z)) continue; // nada dentro do precipicio
+      if (track.chasmContains(x, z) || track.inSolidZone?.(x, z) || (track.terrain && !track.terrain.sceneryOk(x, z))) continue; // nada no precipicio, na encosta, na agua nem em encostas ingremes
       out.push([x, z]);
     }
     return out;
   };
 
   const cnt = track.def.scenery || {}; // quantidades editaveis (debug)
-  const trees = spots(cnt.trees ?? 300, 2).map(([x, z]) => {
+  // sem arvores colisoras na praia (la so palmeiras, so visuais)
+  const trees = spots(cnt.trees ?? 300, 2).filter(([x, z]) => !track.nearSurface(x, z, 8, 260)).map(([x, z]) => {
     const s = 0.8 + rng() * 1.1;
-    return { x, z, s, yaw: rng() * 6.28, sy: s * (0.9 + rng() * 0.4), hue: rng(), light: rng(), r: 1.15 * s };
+    return { x, z, y: track.terrain ? track.terrain.heightAt(x, z) : 0, s, yaw: rng() * 6.28, sy: s * (0.9 + rng() * 0.4), hue: rng(), light: rng(), r: 1.15 * s };
   });
   const rocks = spots(cnt.rocks ?? 90, -3).map(([x, z]) => {
     const s = 0.5 + rng() * 1.6;
-    return { x, z, s, yaw: rng() * 6, tone: rng(), r: 1.5 * s };
+    return { x, z, y: track.terrain ? track.terrain.heightAt(x, z) : 0, s, yaw: rng() * 6, tone: rng(), r: 1.5 * s };
   });
   const houses = spots(cnt.houses ?? 22, 14, edge + 110).map(([x, z]) => ({
     x, z, yaw: Math.floor(rng() * 4) * (Math.PI / 2), brick: rng() < 0.5, hue: rng(),
@@ -136,8 +137,8 @@ export function buildScenery(track, seed = 99) {
   // colisores (circulos) + grade para consulta rapida
   const colliders = [];
   // dead: arvore/pedra destruida por um poder (some do cenario); idx = indice no array do render
-  trees.forEach((t, idx) => { t.dead = false; colliders.push({ x: t.x, z: t.z, r: t.r, kind: 'tree', top: 6 * t.sy, idx, ref: t, dead: false }); });
-  rocks.forEach((r, idx) => { r.dead = false; colliders.push({ x: r.x, z: r.z, r: r.r, kind: 'rock', top: 2.2 * r.s, idx, ref: r, dead: false }); });
+  trees.forEach((t, idx) => { t.dead = false; colliders.push({ x: t.x, z: t.z, r: t.r, kind: 'tree', top: (t.y || 0) + 6 * t.sy, idx, ref: t, dead: false }); });
+  rocks.forEach((r, idx) => { r.dead = false; colliders.push({ x: r.x, z: r.z, r: r.r, kind: 'rock', top: (r.y || 0) + 2.2 * r.s, idx, ref: r, dead: false }); });
   houses.forEach((h, idx) => {
     h.frozen = false;
     const c = Math.cos(h.yaw), s = Math.sin(h.yaw);

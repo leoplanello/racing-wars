@@ -1,8 +1,10 @@
-// Passo da Montanha: serra de terra e pedra, ~2,6 min por volta (~5,9 mil u).
-// Mesmo estilo da pista de teste (terra, rampas de salto, precipicios sem grade, platô alto) com tres trechos no fim da volta:
-// uma PRAIA com o mar a esquerda, a SUBIDA em serpentina (montanha a esquerda, queda a direita, caixas na beirada) e, na descida,
-// uma PONTE seguida de uma RAMPA. As rampas de salto ficam sempre em reta: o carro decola reto e pousa na estrada.
-// A volta e horaria: a subida curva a esquerda (arco de ~200 graus em volta da montanha) e o grampo do topo volta a direita.
+// Passo da Montanha: serra de terra e pedra, ~3,4 min por volta (~7,9 mil u).
+// Mesmo estilo da pista de teste (terra, rampas de salto, platô alto) e, no fim da volta, tres trechos novos:
+// uma PRAIA com o mar a esquerda; a MONTANHA A, com pico, que a estrada sobe em espiral (2 voltas, montanha a esquerda, queda a direita,
+// caixas na beirada); uma PONTE alta, por cima das voltas de baixo, ate a MONTANHA B, que tem uma rampa de salto e uma descida reta
+// ate a largada. As rampas de salto ficam sempre em reta: o carro decola reto e pousa na estrada.
+// A volta e horaria; a espiral curva a esquerda. O relevo (`terrain`) e a altura do piso (`profile`) sao coerentes: a estrada fica
+// em cima da montanha (ver sim/terrain.js).
 export default {
   id: 'mountain',
   name: 'Passo da Montanha',
@@ -18,45 +20,71 @@ export default {
     [250, 168], [226, 214], [166, 238], [105, 234],
     [44, 233], [-16, 228], [-72, 218], [-128, 206],
     [-180, 170], [-212, 112], [-204, 48], [-222, -10],
-    [-226.1, -56.5], [-227, -126.1], [-225.2, -191.3], [-223.9, -256.5],
-    [-211.2, -287.3], [-180.4, -300], [-149.2, -306.9], [-123.8, -326.4],
-    [-109, -354.8], [-107.6, -386.7], [-119.9, -416.3], [-143.5, -437.9],
-    [-174, -447.5], [-205.7, -443.4], [-235.7, -444.9], [-256, -466.9],
-    [-254.7, -496.8], [-232.6, -517.1], [-143.5, -539.1], [-73.9, -545.7],
-    [-43.2, -532.9], [-30.4, -502.2], [-30.4, -434.8], [-30.4, -369.6],
-    [-30.4, -300], [-31.3, -217.4], [-30.4, -173.9], [-27, -145.7],
-    [-17.4, -123.9],
+    [-226.1, -56.5], [-227, -126.1], [-225.2, -191.3], [-223.9, -243.5],
+    [-211.2, -274.2], [-180.4, -287], [-130.4, -287], [-87, -287],
+    [-47.5, -296], [-14.1, -317.6], [9.4, -348.7], [20.6, -385.4],
+    [18.5, -422.9], [4, -456.9], [-20.7, -483.3], [-52.4, -499.2],
+    [-87, -503.3], [-120.1, -495.4], [-147.9, -477], [-167.3, -450.7],
+    [-176.3, -420.1], [-174.3, -389], [-161.9, -361.1], [-141.3, -339.6],
+    [-115.2, -326.8], [-87, -323.9], [-60.1, -330.7], [-37.9, -345.9],
+    [-22.6, -367.2], [-15.8, -391.8], [-17.9, -416.5], [-28, -438.4],
+    [-44.5, -455], [-65.1, -464.5], [-87, -466.3], [-107.4, -460.6],
+    [-124.1, -448.7], [-135.3, -432.2], [-139.9, -413.7], [-137.9, -395.4],
+    [-129.9, -379.5], [-117.5, -367.9], [-102.5, -361.6], [-87, -360.9],
+    [-34.8, -360.9], [34.8, -360.9], [108.7, -360.9], [173.9, -360.9],
+    [204.7, -348.1], [217.4, -317.4], [204.7, -286.6], [173.9, -273.9],
+    [65.2, -242.6], [-42.8, -211.5], [-66.6, -195], [-77.9, -168.3],
+    [-73.2, -139.7], [-53.9, -118.1], [-26.1, -110],
   ],
+  // altura do piso por ponto de controle [indice, altura]: linear entre eles (a espiral segue o cone da montanha A)
+  profile: [[27, 0], [27, 0], [28, 1.1], [29, 2.4], [30, 3.8], [31, 5.1], [32, 6.6], [33, 8], [34, 9.5], [35, 11], [36, 12.6], [37, 14.1], [38, 15.7], [39, 17.2], [40, 18.8], [41, 20.4], [42, 22], [43, 23.7], [44, 25.3], [45, 26.9], [46, 28.6], [47, 30.2], [48, 31.9], [49, 33.6], [50, 35.3], [51, 36.9], [52, 38.6], [53, 40.3], [54, 42.1], [55, 43.8], [56, 45.5], [57, 47.2], [58, 49], [59, 50.7], [60, 52.4], [61, 54.2], [62, 56], [63, 57.7], [64, 57.7], [65, 57.7], [66, 58.2], [67, 58.2], [68, 56.6], [69, 55], [70, 53.3], [71, 51.7], [72, 34], [73, 10], [74, 8], [75, 6], [76, 4], [77, 2], [78, 0]],
   surfaces: [
-    { from: 0.4967, to: 0.5786, type: 8 }, // praia: areia
-    { from: 0.2493, to: 0.352, type: 3 }, // trecho de pedra nos grampos
-    { from: 0.5803, to: 0.7578, type: 3 }, // pedra na subida
+    { from: 0.3695, to: 0.4254, type: 8 }, // praia: areia
+    { from: 0.1856, to: 0.2621, type: 3 }, // trecho de pedra nos grampos
+    { from: 0.4713, to: 0.9494, type: 3 }, // pedra na montanha
   ],
   bridges: [
-    { from: 0.988, to: 0.0594 }, // ponte de madeira sobre o desfiladeiro, passa pela largada
-    { from: 0.8585, to: 0.8824 }, // ponte da descida (reta, ao nivel do chao)
+    { from: 0.9911, to: 0.0442 }, // ponte de madeira sobre o desfiladeiro, passa pela largada
+    { from: 0.7751, to: 0.8488 }, // ponte alta: do cume da montanha A ate o topo da B
   ],
   hills: [
-    { from: 0.1782, to: 0.2257, height: 7, rise: 80, fall: 40, rails: false }, // subida da serra ate um patamar
-    { from: 0.3004, to: 0.3004, height: 3.6, rise: 20, fall: 0, rails: true }, // rampa de salto (em reta)
-    { from: 0.3497, to: 0.3497, height: 3.6, rise: 20, fall: 0, rails: true }, // rampa de salto (em reta)
-    { from: 0.4295, to: 0.4826, height: 12, rise: 70, fall: 70, rails: false }, // platô do cume
-    { from: 0.7083, to: 0.7561, height: 22, rise: 620, fall: 480, rails: false }, // subida em volta da montanha, cume e descida
-    { from: 0.9251, to: 0.9251, height: 3.6, rise: 20, fall: 0, rails: true }, // rampa de salto apos a ponte (em reta)
+    { from: 0.1327, to: 0.168, height: 7, rise: 80, fall: 40, rails: false }, // subida da serra ate um patamar
+    { from: 0.2237, to: 0.2237, height: 3.6, rise: 20, fall: 0, rails: true }, // rampa de salto (em reta)
+    { from: 0.2604, to: 0.2604, height: 3.6, rise: 20, fall: 0, rails: true }, // rampa de salto (em reta)
+    { from: 0.3198, to: 0.3593, height: 12, rise: 70, fall: 70, rails: false }, // platô do cume
+    { from: 0.9165, to: 0.9165, height: 3.6, rise: 20, fall: 0, rails: true, add: true }, // rampa de salto da montanha B (em reta, sobre a descida)
   ],
-  // precipicios sem cerca: nas curvas de serra, a direita da subida (queda), no grampo do topo e o MAR a esquerda da praia
+  // precipicios sem cerca: nas curvas de serra e o MAR a esquerda da praia
   chasms: [
-    { from: 0.095, to: 0.1603, side: -1, width: 60 },
-    { from: 0.2611, to: 0.2939, side: 1, width: 55 },
-    { from: 0.5001, to: 0.5701, side: -1, gap: 30, width: 420, water: true }, // oceano
-    { from: 0.6013, to: 0.7578, side: 1, width: 70 }, // queda a direita da subida
-    { from: 0.6998, to: 0.7578, side: -1, width: 60 },
+    { from: 0.0707, to: 0.1193, side: -1, gap: 8, width: 60 },
+    { from: 0.1944, to: 0.2188, side: 1, gap: 8, width: 55 },
+    { from: 0.2808, to: 0.4242, side: -1, gap: 12, width: 60, water: true }, // costa oeste: mar a esquerda
   ],
-  solidWalls: [{ from: 0.6013, to: 0.6998, side: -1 }], // a montanha: parede solida a esquerda da subida
-  widths: [{ from: 0.0594, to: 0.101, hw: 11 }], // garganta estreita depois da ponte
-  boxGroups: [0.0416, 0.1188, 0.19, 0.2669, 0.3383, 0.4057, 0.538, 0.905],
-  boxRows: [{ from: 0.6093, to: 0.751, every: 60, side: 'R', inset: 4 }], // caixas na beirada da queda
-  scenery: { trees: 420, rocks: 220, houses: 0 },
+  solidWalls: [{ from: 0.4713, to: 0.7675, side: -1 }], // a montanha: parede solida a esquerda da subida
+  widths: [{ from: 0.0442, to: 0.0752, hw: 11 }], // garganta estreita depois da ponte
+  boxGroups: [0.031, 0.0884, 0.1415, 0.1987, 0.2519, 0.3021, 0.3939, 0.9315],
+  boxRows: [{ from: 0.4904, to: 0.7624, every: 110, side: 'R', inset: 4 }], // caixas na beirada da queda
+  // relevo: montanha A (cone com pico) e montanha B (cupula achatada); a estrada fica embutida (sim/terrain.js)
+  terrain: {
+    box: [-1300, -1700, 1000, 800], // cobre todo o mapa visivel (o chao do mundo so aparece alem, sob a nevoa)
+    cell: 7,
+    reach: 70,
+    noise: 4,
+    rolling: { amp: 6, scale: 260 }, // colinas suaves nas planicies
+    // o mar cobre todo o lado oeste do mapa; a margem (shore) acompanha a pista a ~27 u da linha central
+    ocean: {
+      shore: [[-305.1, 499.1], [-316.7, 493.8], [-328.2, 488.1], [-339.5, 482.2], [-350.6, 475.9], [-361.5, 469.2], [-372.3, 462.3], [-382.9, 454.9], [-393.3, 447.2], [-403.5, 439.1], [-413.4, 430.5], [-423, 421.4], [-432.3, 411.8], [-440.9, 402], [-449.1, 392.1], [-456.9, 381.9], [-464.5, 371.5], [-471.7, 360.8], [-478.6, 349.9], [-485.1, 338.7], [-491.3, 327.2], [-497.1, 315.4], [-502.3, 303.2], [-507, 290.6], [-511.1, 277.5], [-514.4, 264], [-516.5, 248.6], [-516.7, 233.6], [-515.5, 219.4], [-513.5, 205.9], [-510.8, 193.1], [-508, 180.9], [-505, 169.1], [-502.3, 157.8], [-499.8, 146.8], [-497.9, 136.4], [-496.7, 126.4], [-496.4, 117.2], [-497.1, 108.1], [-498.7, 98.3], [-501.1, 88.3], [-504.1, 78], [-507.6, 67.6], [-511.6, 56.9], [-515.8, 46], [-520.2, 34.9], [-524.7, 23.4], [-529.1, 11.5], [-533.3, -1.1], [-536.9, -14.5], [-539.5, -27.4], [-541.7, -40.1], [-543.4, -53], [-544.7, -65.8], [-545.5, -78.5], [-546.1, -91], [-546.6, -103.1], [-547, -115], [-547.4, -126.9], [-547.9, -139], [-548.3, -151.2], [-548.6, -163.3], [-548.9, -175.4], [-549.1, -187.5], [-549.3, -199.6], [-549.5, -211.7], [-549.6, -223.8], [-549.6, -235.9], [-549.7, -247.9], [-549.7, -260], [-549.7, -272.1], [-549.6, -284.1], [-549.5, -296.3], [-549.4, -308.4], [-549.2, -320.6], [-548.9, -332.7], [-548.6, -344.8], [-548.2, -356.8], [-547.8, -368.9], [-547.4, -380.9], [-547, -392.9], [-546.6, -404.9], [-546.2, -416.8], [-545.8, -428.8], [-545.5, -440.6], [-545.2, -452.2], [-545.2, -463.9], [-545.3, -475.7], [-545.4, -487.6], [-545.5, -499.7], [-545.5, -512], [-545.4, -524.5], [-544.9, -537.4], [-543.9, -550.6], [-542.1, -564.3], [-543, -640], [-560, -760], [-700, -900], [-860, -1000], [-900, -1250], [-880, -1640]],
+      polygon: [[-305.1, 499.1], [-316.7, 493.8], [-328.2, 488.1], [-339.5, 482.2], [-350.6, 475.9], [-361.5, 469.2], [-372.3, 462.3], [-382.9, 454.9], [-393.3, 447.2], [-403.5, 439.1], [-413.4, 430.5], [-423, 421.4], [-432.3, 411.8], [-440.9, 402], [-449.1, 392.1], [-456.9, 381.9], [-464.5, 371.5], [-471.7, 360.8], [-478.6, 349.9], [-485.1, 338.7], [-491.3, 327.2], [-497.1, 315.4], [-502.3, 303.2], [-507, 290.6], [-511.1, 277.5], [-514.4, 264], [-516.5, 248.6], [-516.7, 233.6], [-515.5, 219.4], [-513.5, 205.9], [-510.8, 193.1], [-508, 180.9], [-505, 169.1], [-502.3, 157.8], [-499.8, 146.8], [-497.9, 136.4], [-496.7, 126.4], [-496.4, 117.2], [-497.1, 108.1], [-498.7, 98.3], [-501.1, 88.3], [-504.1, 78], [-507.6, 67.6], [-511.6, 56.9], [-515.8, 46], [-520.2, 34.9], [-524.7, 23.4], [-529.1, 11.5], [-533.3, -1.1], [-536.9, -14.5], [-539.5, -27.4], [-541.7, -40.1], [-543.4, -53], [-544.7, -65.8], [-545.5, -78.5], [-546.1, -91], [-546.6, -103.1], [-547, -115], [-547.4, -126.9], [-547.9, -139], [-548.3, -151.2], [-548.6, -163.3], [-548.9, -175.4], [-549.1, -187.5], [-549.3, -199.6], [-549.5, -211.7], [-549.6, -223.8], [-549.6, -235.9], [-549.7, -247.9], [-549.7, -260], [-549.7, -272.1], [-549.6, -284.1], [-549.5, -296.3], [-549.4, -308.4], [-549.2, -320.6], [-548.9, -332.7], [-548.6, -344.8], [-548.2, -356.8], [-547.8, -368.9], [-547.4, -380.9], [-547, -392.9], [-546.6, -404.9], [-546.2, -416.8], [-545.8, -428.8], [-545.5, -440.6], [-545.2, -452.2], [-545.2, -463.9], [-545.3, -475.7], [-545.4, -487.6], [-545.5, -499.7], [-545.5, -512], [-545.4, -524.5], [-544.9, -537.4], [-543.9, -550.6], [-542.1, -564.3], [-543, -640], [-560, -760], [-700, -900], [-860, -1000], [-900, -1250], [-880, -1640], [-1290, -1690], [-1290, 790], [-305.1, 790]],
+    },
+    // rio da planicie noroeste: nasce junto a montanha A e desagua no mar
+    rivers: [{ points: [[-560, -1000], [-620, -1040], [-690, -1010], [-760, -1055], [-830, -1020], [-900, -1050], [-960, -1030]], width: 34, bank: 16, depth: 2.6 }],
+    peaks: [
+      { x: -200, z: -930, h: 96, r1: 270, power: 1.1, spire: 45, spireH: 14 },
+      { x: 400, z: -730, h: 58.4, plateau: 100, r1: 330, power: 1.3 },
+    ],
+    zones: [{ from: 0.8438, to: 0.9494, mode: 'ridge', slope: 0.7 }], // descida da B: cumeeira
+  },
+  scenery: { trees: 650, rocks: 260, houses: 0 },
   theme: {
     kind: 'mountain',
     sky: ['#3d6fb0', '#8fb8e0', '#e6f0f7'],

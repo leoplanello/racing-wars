@@ -136,7 +136,7 @@ export class UI {
       const el = document.createElement('div');
       el.className = 'card-p';
       el.style.setProperty('--c', COLORS[c.color].hex);
-      const ticks = Array.from({ length: 10 }, () => '<i></i>').join('');
+      const ticks = Array.from({ length: 20 }, () => '<i></i>').join('');
       el.innerHTML = `<div class="av">${GLYPH[c.color % 8]}</div><div class="bd"><div class="l1"><span class="nm">${esc(names.get(c.id) || 'Piloto')}</span><span class="rk"></span><span class="it"></span></div><div class="bar">${ticks}</div></div>`;
       top.appendChild(el);
       this.chips.set(c.id, { el, it: el.querySelector('.it'), rk: el.querySelector('.rk'), ticks: [...el.querySelectorAll('.bar i')], last: -1 });
@@ -176,6 +176,25 @@ export class UI {
     const order = [...alive, ...dead];
     for (const c of game.cars) if (!order.includes(c.id)) order.push(c.id);
     return order;
+  }
+
+  /** Numero flutuante (+2 / -1) ao lado do cartao do piloto; fica ate `fadeDeltas` (proximo spawn). */
+  showDelta(id, d) {
+    const ch = this.chips.get(id);
+    if (!ch || this.race) return;
+    if (!ch.delta) {
+      ch.delta = document.createElement('span');
+      ch.delta.className = 'pdelta';
+      ch.el.appendChild(ch.delta);
+    }
+    ch.delta.textContent = d > 0 ? `+${d}` : `${d}`;
+    ch.delta.classList.toggle('up', d > 0);
+    ch.delta.classList.remove('fade');
+    ch.delta.style.opacity = 1;
+  }
+
+  fadeDeltas() {
+    for (const ch of this.chips.values()) if (ch.delta) { ch.delta.classList.add('fade'); ch.delta.style.opacity = 0; }
   }
 
   updateHud(game) {

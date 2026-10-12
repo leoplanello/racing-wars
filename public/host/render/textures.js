@@ -259,6 +259,32 @@ export function waterTexture() {
   return toTex(c);
 }
 
+/** Agua: relevo suave sem direcao dominante (soma de ondas inteiras = emenda sem costura). Cinza: 0.5 = media; claro = crista/caustica. */
+export function oceanTexture() {
+  const rng = makeRng(83);
+  const S = 256;
+  const [c, g] = canvas(S, S);
+  const img = g.createImageData(S, S);
+  const waves = [];
+  for (let i = 0; i < 14; i++) {
+    const a = rng() * Math.PI * 2, f = 2 + Math.floor(rng() * 6);
+    waves.push([Math.round(Math.cos(a) * f) || 1, Math.round(Math.sin(a) * f) || 1, rng() * 6.283, 0.5 + rng() * 0.5]);
+  }
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      let v = 0, w = 0;
+      for (const [fx, fz, ph, am] of waves) { v += Math.sin(((fx * x + fz * y) / S) * 6.2832 + ph) * am; w += am; }
+      v /= w; // -1..1
+      const ridge = Math.pow(1 - Math.abs(v * 1.6), 3); // cristas finas e tortas, estilo caustica
+      const k = 0.42 + v * 0.18 + ridge * 0.3;
+      const o = (y * S + x) * 4;
+      img.data[o] = 150 + k * 105; img.data[o + 1] = 190 + k * 65; img.data[o + 2] = 215 + k * 40; img.data[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return toTex(c);
+}
+
 export function checkerTexture(cols = 8, rows = 4) {
   const q = 32;
   const [c, g] = canvas(cols * q, rows * q);
@@ -408,6 +434,78 @@ export function cityGroundTexture() {
   return toTex(c);
 }
 
+/** Detalhe de rocha (cinza, multiplica a cor por vertice do terreno): manchas, fissuras e veios de estrato. */
+export function rockDetailTexture() {
+  const rng = makeRng(63);
+  const [c, g] = canvas(256, 256);
+  g.fillStyle = '#b8b8bc'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 900; i++) { // manchas largas e suaves
+    const v = 150 + rng() * 105;
+    g.fillStyle = `rgba(${v},${v},${v + 5},${0.12 + rng() * 0.18})`;
+    g.beginPath(); g.ellipse(rng() * 256, rng() * 256, 3 + rng() * 22, 2 + rng() * 9, rng() * 3.14, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 1800; i++) { // granulado
+    const v = 120 + rng() * 135;
+    g.fillStyle = `rgba(${v},${v},${v},${0.25 + rng() * 0.3})`;
+    g.fillRect(rng() * 256, rng() * 256, 1 + rng() * 2, 1 + rng() * 2);
+  }
+  g.lineCap = 'round';
+  for (let i = 0; i < 46; i++) { // fissuras escuras
+    g.strokeStyle = `rgba(40,42,50,${0.12 + rng() * 0.2})`; g.lineWidth = 0.7 + rng() * 1.3;
+    let x = rng() * 256, y = rng() * 256;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) { x += (rng() - 0.5) * 26; y += (rng() - 0.3) * 22; g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let i = 0; i < 16; i++) { // estratos horizontais
+    g.strokeStyle = `rgba(60,62,72,${0.1 + rng() * 0.12})`; g.lineWidth = 1 + rng() * 2;
+    const y = rng() * 256; g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= 256; x += 32) g.lineTo(x, y + (rng() - 0.5) * 6);
+    g.stroke();
+  }
+  return toTex(c);
+}
+
+/** Detalhe de pasto (multiplica a cor por vertice): tons suaves, folhas finas e pontinhos; tileavel. */
+export function grassDetailTexture() {
+  const rng = makeRng(97);
+  const [c, g] = canvas(256, 256);
+  g.fillStyle = '#d6d6d2'; g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 700; i++) { // manchas suaves (tons de verde mais claros/escuros)
+    const v = 185 + rng() * 70;
+    g.fillStyle = `rgba(${v},${v + 4},${v - 6},${0.1 + rng() * 0.14})`;
+    for (const ox of [0, -256, 256]) for (const oy of [0, -256, 256]) { g.beginPath(); g.ellipse(rng() * 0 + (i * 53 % 256) + ox, ((i * 97) % 256) + oy, 4 + rng() * 14, 3 + rng() * 9, rng() * 3, 0, 7); g.fill(); }
+  }
+  g.lineCap = 'round';
+  for (let i = 0; i < 2600; i++) { // folhas de capim
+    const v = 150 + rng() * 105, x = rng() * 256, y = rng() * 256;
+    g.strokeStyle = `rgba(${v - 40},${v},${v - 70},${0.22 + rng() * 0.3})`; g.lineWidth = 0.7 + rng() * 0.9;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + (rng() - 0.5) * 3, y - 2 - rng() * 4); g.stroke();
+  }
+  return toTex(c);
+}
+
+/** Espuma de onda (alfa): frente nitida e cauda de bolhas que some; periodica no eixo u. */
+export function foamTexture() {
+  const rng = makeRng(71);
+  const [c, g] = canvas(128, 64);
+  g.clearRect(0, 0, 128, 64);
+  for (let y = 0; y < 64; y++) { // cada linha com a frente da onda um pouco deslocada (recorte irregular)
+    const front = 100 + Math.sin(y * 0.55) * 6 + Math.sin(y * 1.7 + 1) * 3;
+    const grad = g.createLinearGradient(front - 70, 0, front + 6, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(0.75, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(0.97, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad; g.fillRect(Math.max(0, front - 70), y, 76, 1);
+  }
+  for (let i = 0; i < 140; i++) { // bolhas na cauda
+    g.fillStyle = `rgba(255,255,255,${0.2 + rng() * 0.4})`;
+    g.beginPath(); g.arc(30 + rng() * 70, rng() * 64, 0.6 + rng() * 1.4, 0, 7); g.fill();
+  }
+  return toTex(c);
+}
+
 /** Areia da praia: bege com graos e ondulacoes claras. */
 export function sandTexture() {
   const rng = makeRng(57);
@@ -491,5 +589,57 @@ export function stopSignTexture() {
   g.strokeStyle = '#fff'; g.lineWidth = 5; g.stroke();
   g.fillStyle = '#fff'; g.font = 'bold 36px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText('PARE', 64, 66);
+  return toTex(c, { repeat: false });
+}
+
+// ---------------------------------------------------------------- detalhes de cenario
+/** Placa de curva (chevron): fundo amarelo, borda preta e duas setas apontando para a direita. */
+export function chevronTexture() {
+  const [c, g] = canvas(128, 128);
+  g.fillStyle = '#111'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#ffd23a'; g.fillRect(6, 6, 116, 116);
+  g.strokeStyle = '#111'; g.lineWidth = 15; g.lineJoin = 'miter'; g.lineCap = 'butt';
+  for (const x of [28, 62]) { g.beginPath(); g.moveTo(x, 24); g.lineTo(x + 34, 64); g.lineTo(x, 104); g.stroke(); }
+  return toTex(c, { repeat: false });
+}
+
+/** Filetes de agua caindo (tileavel na vertical): listras claras e finas sobre azul transparente. */
+export function streakTexture() {
+  const rng = makeRng(5);
+  const [c, g] = canvas(64, 128);
+  g.clearRect(0, 0, 64, 128);
+  for (let i = 0; i < 26; i++) {
+    const x = rng() * 64, w = 1 + rng() * 3, y = rng() * 128, h = 30 + rng() * 70;
+    for (const oy of [0, -128, 128]) {
+      const gr = g.createLinearGradient(0, y + oy, 0, y + oy + h);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.3, `rgba(240,250,255,${0.5 + rng() * 0.4})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(x, y + oy, w, h);
+    }
+  }
+  g.fillStyle = 'rgba(190,225,245,.22)'; g.fillRect(0, 0, 64, 128);
+  const t = toTex(c);
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  return t;
+}
+
+/** Raio de luz: faixa vertical que some nas bordas e no fim. */
+export function rayTexture() {
+  const [c, g] = canvas(64, 256);
+  const h = g.createLinearGradient(0, 0, 64, 0);
+  h.addColorStop(0, 'rgba(255,244,214,0)'); h.addColorStop(0.5, 'rgba(255,244,214,1)'); h.addColorStop(1, 'rgba(255,244,214,0)');
+  g.fillStyle = h; g.fillRect(0, 0, 64, 256);
+  g.globalCompositeOperation = 'destination-in';
+  const v = g.createLinearGradient(0, 0, 0, 256);
+  v.addColorStop(0, 'rgba(0,0,0,0.1)'); v.addColorStop(0.35, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = v; g.fillRect(0, 0, 64, 256);
+  return toTex(c, { repeat: false });
+}
+
+/** Anel suave (ondulacao na agua). */
+export function ringTexture() {
+  const [c, g] = canvas(128, 128);
+  const gr = g.createRadialGradient(64, 64, 20, 64, 64, 62);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.7, 'rgba(255,255,255,.9)'); gr.addColorStop(0.85, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
   return toTex(c, { repeat: false });
 }

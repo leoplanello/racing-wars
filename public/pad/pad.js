@@ -69,7 +69,7 @@ function applyState(m) {
   $('who').textContent = m.name;
   $('pts').textContent = m.pts !== undefined && m.mode !== 'menu' && m.mode !== 'wait' && m.mode !== 'dead' ? `${m.pts} pts` : '';
   if (m.mode === 'drive') {
-    $('drive').hidden = false; $('menu').hidden = true; $('msg').hidden = true;
+    $('drive').hidden = false; $('menu').hidden = true; $('msg').hidden = true; $('skull').hidden = true;
     const [label, id] = (m.item || '').split('|');
     if (id === 'mine') $('ico').innerHTML = '<span class="mine-ico"></span>'; else $('ico').textContent = { nitro: '🚀', missile: '🎯', whomp: '🧲', ice: '❄️' }[id] || '';
     $('itl').textContent = label || '';

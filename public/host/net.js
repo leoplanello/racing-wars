@@ -1,5 +1,6 @@
 // Cliente WebSocket do host (tela principal).
 import { decodeHostInput, HOST_INPUT } from '/shared/protocol.js';
+import { wsUrl } from '/shared/wsurl.js';
 
 export class HostNet {
   constructor(h) {
@@ -13,8 +14,7 @@ export class HostNet {
   connect() {
     const cfg = window.RW || {};
     if (cfg.static && !cfg.relay) { this.h.onStatus?.('offline'); return; } // Pages sem relay: so teclado
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(cfg.relay || `${proto}//${location.host}/ws`);
+    const ws = new WebSocket(wsUrl(document.baseURI, cfg.relay));
     ws.binaryType = 'arraybuffer';
     this.ws = ws;
     ws.onopen = () => {
@@ -41,6 +41,7 @@ export class HostNet {
         case 'disconnect': this.h.onDisconnect(m); break;
         case 'master': this.h.onMaster(m.id); break;
         case 'from': this.h.onFrom(m.id, m.data); break;
+        case 'err': this.h.onStatus?.(m.reason === 'busy' ? 'busy' : 'offline'); break;
       }
     };
     ws.onclose = () => {

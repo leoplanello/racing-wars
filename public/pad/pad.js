@@ -1,5 +1,6 @@
 // Controle do celular: direcao cega (metade esquerda) + item (metade direita).
 import { encodeInput, BTN_FIRE, BTN_AWAY, BTN_REV } from '/shared/protocol.js';
+import { wsUrl } from '/shared/wsurl.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -19,8 +20,7 @@ function connect() {
     S.room = '';
     return;
   }
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(cfg.relay || `${proto}//${location.host}/ws`);
+  const ws = new WebSocket(wsUrl(document.baseURI, cfg.relay));
   S.ws = ws;
   ws.onopen = () => {
     S.retry = 0;
@@ -40,7 +40,7 @@ function connect() {
         S.joined = false;
         $('pad').hidden = true; $('join').hidden = false;
         document.body.classList.remove('landscape');
-        $('err').textContent = m.reason === 'noroom' ? 'Sala não encontrada. Confira o código.' : 'Sala cheia (8 jogadores).';
+        $('err').textContent = m.reason === 'noroom' ? 'Sala não encontrada. Confira o código.' : m.reason === 'busy' ? 'Muitas tentativas. Aguarde um instante.' : 'Sala cheia (8 jogadores).';
         S.room = '';
         ws.onclose = null;
         ws.close();

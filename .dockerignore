@@ -1,0 +1,14 @@
+.git
+.claude
+node_modules
+dist
+local-assets
+other-games
+public/tracks/srb2kart
+roms
+test
+docs
+deploy
+*.md
+*.log
+*.bat

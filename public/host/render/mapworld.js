@@ -9,7 +9,7 @@ const MISSING = 0x6a6a6a; // textura/flat que o jogo original nao tem (ou nome d
 const hash = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619); return h >>> 0; };
 
 /** Aquece o cache do navegador com as texturas de uma pista (pre-carga da proxima pista do campeonato). */
-export function preloadMapAssets(d, base = '/tracks/srb2kart/') {
+export function preloadMapAssets(d, base = 'tracks/srb2kart/') {
   for (const [kind, set] of [['t', d.tex], ['f', d.flat]]) {
     for (const name of Object.keys(set || {})) { const im = new Image(); im.src = `${base}tex/${kind}_${safe(name)}.png`; }
   }
@@ -18,7 +18,7 @@ export function preloadMapAssets(d, base = '/tracks/srb2kart/') {
 
 export function buildMapWorld(track, opts = {}) {
   const w = track.map, d = w.d, s = d.scale, inv = 1 / s;
-  const base = opts.base || '/tracks/srb2kart/';
+  const base = opts.base || 'tracks/srb2kart/';
   const group = new THREE.Group();
   const loader = new THREE.TextureLoader();
   const texCache = new Map();

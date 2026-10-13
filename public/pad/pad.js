@@ -48,7 +48,7 @@ function connect() {
       case 'role': S.master = m.master; break;
       case 'st': applyState(m); break;
       case 'vib': if (navigator.vibrate) navigator.vibrate(m.p); break;
-      case 'pong': S.rtt = Math.round(performance.now() - m.ts); $('ping').style.color = S.rtt < 60 ? '#4dff88' : S.rtt < 140 ? '#ffd60a' : '#ff6b6b'; send({ t: 'rtt', ms: S.rtt }); break;
+      case 'pong': S.rtt = Math.round(performance.now() - m.ts); $('ping').style.color = S.dc ? '#4dff88' : S.rtt < 60 ? '#4dff88' : S.rtt < 140 ? '#ffd60a' : '#ff6b6b'; send({ t: 'rtt', ms: S.rtt }); break;
       case 'rtc': onRtc(m); break;
       case 'hostgone': showMode('wait', { title: 'Tela principal desconectada', sub: 'Aguardando reconexão…' }); break;
     }
@@ -229,7 +229,7 @@ function onRtc(m) {
       pc.onicecandidate = (e) => e.candidate && send({ t: 'rtc', cand: e.candidate.toJSON() });
       pc.ondatachannel = (e) => {
         const dc = e.channel;
-        const mark = () => { if (S.pc === pc) { S.dc = dc.readyState === 'open' ? dc : null; $('ping').textContent = S.dc ? '● P2P' : '●'; } };
+        const mark = () => { if (S.pc === pc) { S.dc = dc.readyState === 'open' ? dc : null; $('ping').textContent = S.dc ? '● P2P' : '● servidor'; } };
         dc.onopen = dc.onclose = mark;
       };
       await pc.setRemoteDescription(m.sdp);

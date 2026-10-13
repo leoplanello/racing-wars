@@ -24,9 +24,9 @@ test('paginas saem com caminhos relativos e redirect de /pad', async () => {
   try {
     const base = `http://127.0.0.1:${app.port}`;
     const host = await (await fetch(base + '/')).text();
-    assert.ok(host.includes('href="./host/host.css"') && host.includes('importmap') && !host.includes('src="/host'));
+    assert.ok(host.includes('/host/host.css"') && host.includes('importmap') && !host.includes('src="/host'));
     const pad = await (await fetch(base + '/pad/')).text();
-    assert.ok(pad.includes('src="../pad/pad.js"'));
+    assert.match(pad, /src="\.\.\/_v\/[^/]+\/pad\/pad\.js"/);
     const r = await fetch(base + '/pad', { redirect: 'manual' });
     assert.equal(r.status, 302);
     assert.equal(r.headers.get('location'), 'pad/');
@@ -92,6 +92,27 @@ test('perfil: avatar validado, repassado ao host e mantido na reconexao do host'
     assert.equal(c.avatar, '🦊');
   } finally {
     for (const w of socks) w.terminate();
+    await app.close();
+  }
+});
+
+test('arquivos versionados (_v/<ver>/) furam o cache a cada deploy', async () => {
+  const app = await start(0);
+  try {
+    const base = `http://127.0.0.1:${app.port}`;
+    const html = await (await fetch(base + '/')).text();
+    const ver = html.match(/\.\/_v\/([^/]+)\/host\/main\.js/)?.[1];
+    assert.ok(ver, 'script versionado');
+    assert.ok(html.includes(`"/sim/":"./_v/${ver}/sim/"`) && html.includes(`href="./_v/${ver}/host/host.css"`));
+    const js = await fetch(`${base}/_v/${ver}/host/main.js`);
+    assert.equal(js.status, 200);
+    assert.match(js.headers.get('cache-control'), /immutable/);
+    assert.equal((await fetch(`${base}/host/main.js`)).headers.get('cache-control'), 'no-cache');
+    const pad = await (await fetch(base + '/pad/')).text();
+    assert.ok(pad.includes(`src="../_v/${ver}/pad/pad.js"`));
+    const bad = await fetch(`${base}/_v/x/%2e%2e/%2e%2e/package.json`);
+    assert.notEqual(bad.status, 200);
+  } finally {
     await app.close();
   }
 });

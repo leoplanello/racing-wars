@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderPage } from './page.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(ROOT, 'dist');
@@ -37,27 +38,8 @@ put(nm('three', 'examples', 'jsm', 'geometries', 'RoundedBoxGeometry.js'), 'thre
 put(nm('three', 'examples', 'jsm', 'utils', 'BufferGeometryUtils.js'), 'three-addons/utils/BufferGeometryUtils.js');
 put(nm('qrcode-generator', 'dist', 'qrcode.mjs'), 'qrcode.mjs');
 
-const config = `<script>window.RW=${JSON.stringify({ static: true, relay: RELAY })};</script>`;
-
-// Reescreve um HTML de public/: caminhos absolutos -> relativos (funciona em qualquer subcaminho) + importmap + config.
-function page(srcFile, prefix) {
-  let html = fs.readFileSync(srcFile, 'utf8');
-  html = html.replace(/<script type="importmap">[\s\S]*?<\/script>\s*/, '');
-  html = html.replace(/(href|src)="\/(host|pad|editor)\//g, (_, a, d) => `${a}="${prefix}${d}/`);
-  const map = {
-    imports: {
-      three: `${prefix}vendor/three/three.module.js`,
-      'three/addons/': `${prefix}vendor/three-addons/`,
-      qrcode: `${prefix}vendor/qrcode.mjs`,
-      '/shared/': `${prefix}shared/`,
-      '/sim/': `${prefix}sim/`,
-      '/host/': `${prefix}host/`,
-    },
-  };
-  const head = `${config}\n<script type="importmap">${JSON.stringify(map)}</script>\n`;
-  if (!html.includes('</head>')) throw new Error(`${srcFile}: sem </head>`);
-  return html.replace('</head>', head + '</head>');
-}
+const config = { static: true, relay: RELAY };
+const page = (srcFile, prefix) => renderPage(fs.readFileSync(srcFile, 'utf8'), prefix, config);
 
 const hostSrc = path.join(ROOT, 'public', 'host', 'index.html');
 const padSrc = path.join(ROOT, 'public', 'pad', 'index.html');

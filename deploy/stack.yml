@@ -1,0 +1,66 @@
+# Stack "racing-wars" para o Swarm do servidor leoplanello (Traefik v3, rede network_public).
+# Atende em racing-wars.leoplanello.com e em leoplanello.com/racing-wars/ (o prefixo e removido
+# pelo Traefik; o app e independente de prefixo).
+#
+# Build (no servidor):  docker build -t racing-wars:0.1.0 .
+# Deploy:               docker stack deploy --resolve-image never -c deploy/stack.yml racing-wars
+#
+# replicas: 1 de proposito. As salas ficam na memoria do processo; mais de uma replica
+# separaria host e celulares em instancias diferentes.
+version: "3.8"
+
+services:
+  app:
+    image: racing-wars:0.1.0
+    environment:
+      PORT: "3000"
+      MAX_ROOMS: "200"
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: start-first
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=network_public
+        - traefik.http.services.racing-wars.loadbalancer.server.port=3000
+
+        # racing-wars.leoplanello.com
+        - traefik.http.routers.racing-wars.rule=Host(`racing-wars.leoplanello.com`)
+        - traefik.http.routers.racing-wars.entrypoints=websecure
+        - traefik.http.routers.racing-wars.service=racing-wars
+        - traefik.http.routers.racing-wars.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.racing-wars.tls.domains[0].main=leoplanello.com
+        - traefik.http.routers.racing-wars.tls.domains[0].sans=*.leoplanello.com
+
+        # leoplanello.com/racing-wars/...  (prioridade acima do router "sites" = 1)
+        - traefik.http.routers.racing-wars-path.rule=Host(`leoplanello.com`) && PathPrefix(`/racing-wars/`)
+        - traefik.http.routers.racing-wars-path.priority=200
+        - traefik.http.routers.racing-wars-path.entrypoints=websecure
+        - traefik.http.routers.racing-wars-path.service=racing-wars
+        - traefik.http.routers.racing-wars-path.middlewares=racing-wars-strip
+        - traefik.http.routers.racing-wars-path.tls.certresolver=letsencryptresolver
+        - traefik.http.middlewares.racing-wars-strip.stripprefix.prefixes=/racing-wars
+
+        # leoplanello.com/racing-wars (sem barra) -> .../racing-wars/
+        - traefik.http.routers.racing-wars-slash.rule=Host(`leoplanello.com`) && Path(`/racing-wars`)
+        - traefik.http.routers.racing-wars-slash.priority=200
+        - traefik.http.routers.racing-wars-slash.entrypoints=websecure
+        - traefik.http.routers.racing-wars-slash.service=noop@internal
+        - traefik.http.routers.racing-wars-slash.middlewares=racing-wars-slash
+        - traefik.http.routers.racing-wars-slash.tls.certresolver=letsencryptresolver
+        - traefik.http.middlewares.racing-wars-slash.redirectregex.regex=^https://leoplanello\.com/racing-wars$$
+        - traefik.http.middlewares.racing-wars-slash.redirectregex.replacement=https://leoplanello.com/racing-wars/
+        - traefik.http.middlewares.racing-wars-slash.redirectregex.permanent=true
+
+networks:
+  network_public:
+    external: true

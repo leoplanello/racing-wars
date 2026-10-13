@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { renderPage } from '../tools/page.js';
 import { MAX_PLAYERS, ROOM_CODE_LEN, ROOM_ALPHABET, PAD_INPUT, HOST_INPUT } from '../shared/protocol.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,6 +20,37 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 const RESERVE_MS = 5 * 60 * 1000;
+const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 200;
+const WINDOW_MS = 60 * 1000;
+const MAX_HOSTS_PER_WINDOW = 10; // salas novas por IP por minuto
+const MAX_MISSES_PER_WINDOW = 30; // codigos inexistentes por IP por minuto (anti-chute)
+
+// Paginas HTML sao reescritas para caminhos relativos: o jogo roda na raiz e atras de um proxy com prefixo (/racing-wars/).
+const PAGES = { '/': ['host', './'], '/host/index.html': ['host', '../'], '/pad/': ['pad', '../'], '/editor/': ['editor', '../'] };
+const REDIRECTS = { '/pad': 'pad/', '/editor': 'editor/' };
+const pageCache = new Map();
+function renderFor(p) {
+  const [dir, prefix] = PAGES[p];
+  if (!pageCache.has(p)) pageCache.set(p, renderPage(fs.readFileSync(path.join(ROOT, 'public', dir, 'index.html'), 'utf8'), prefix));
+  return pageCache.get(p);
+}
+
+/** Contador por IP em janela fixa (limpo pelo timer do servidor). */
+class Limiter {
+  constructor() { this.m = new Map(); }
+  hit(ip, max) {
+    const now = Date.now();
+    let e = this.m.get(ip);
+    if (!e || now - e.t > WINDOW_MS) { e = { t: now, n: 0 }; this.m.set(ip, e); }
+    return ++e.n <= max;
+  }
+  sweep() { const now = Date.now(); for (const [k, e] of this.m) if (now - e.t > WINDOW_MS) this.m.delete(k); }
+}
+/** IP do cliente (atras do Traefik/Cloudflare). So serve para limitar abuso. */
+function clientIp(req) {
+  const h = req.headers;
+  return String(h['cf-connecting-ip'] || String(h['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '');
+}
 
 export function lanAddresses() {
   const out = [];
@@ -31,11 +63,8 @@ export function lanAddresses() {
   return out.sort((a, b) => rank(a) - rank(b));
 }
 
-function resolveFile(urlPath) {
-  let p = decodeURIComponent(urlPath.split('?')[0]);
-  if (p === '/') p = '/host/index.html';
-  if (p === '/pad' || p === '/pad/') p = '/pad/index.html';
-  if (p === '/editor' || p === '/editor/') p = '/editor/index.html';
+export function resolveFile(urlPath) {
+  const p = decodeURIComponent(urlPath.split('?')[0]);
   let base;
   let rel;
   if (p.startsWith('/sim/') || p.startsWith('/shared/')) {
@@ -61,9 +90,22 @@ function resolveFile(urlPath) {
 
 export function start(port = 3000) {
   const rooms = new Map();
+  const hostLimit = new Limiter();
+  const missLimit = new Limiter();
 
   const server = http.createServer((req, res) => {
-    if (req.url.startsWith('/api/lan')) {
+    const urlPath = req.url.split('?')[0];
+    if (REDIRECTS[urlPath]) {
+      res.writeHead(302, { location: REDIRECTS[urlPath] + (req.url.includes('?') ? '?' + req.url.split('?')[1] : '') }).end();
+      return;
+    }
+    const pageKey = PAGES[urlPath] ? urlPath : urlPath === '/pad/index.html' ? '/pad/' : urlPath === '/editor/index.html' ? '/editor/' : null;
+    if (pageKey) {
+      res.writeHead(200, { 'content-type': MIME['.html'], 'cache-control': 'no-cache' });
+      res.end(renderFor(pageKey));
+      return;
+    }
+    if (urlPath === '/api/lan') {
       res.writeHead(200, { 'content-type': MIME['.json'], 'cache-control': 'no-store' });
       res.end(JSON.stringify({ ips: lanAddresses(), port: server.address().port }));
       return;
@@ -117,7 +159,8 @@ export function start(port = 3000) {
     }
   }
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    const ip = clientIp(req);
     ws.isAlive = true;
     ws.on('pong', () => (ws.isAlive = true));
     let room = null;
@@ -143,6 +186,11 @@ export function start(port = 3000) {
         let r = typeof m.code === 'string' ? rooms.get(m.code) : null;
         if (r && r.host && r.host.readyState === 1) r = null; // sala ja tem host vivo
         if (!r) {
+          if (rooms.size >= MAX_ROOMS || !hostLimit.hit(ip, MAX_HOSTS_PER_WINDOW)) {
+            send(ws, { t: 'err', reason: 'busy' });
+            ws.close();
+            return;
+          }
           r = { code: m.code && !rooms.has(m.code) && /^[A-Z]{4}$/.test(m.code) ? m.code : newCode(), host: null, devices: new Map(), masterId: -1 };
           rooms.set(r.code, r);
         }
@@ -161,7 +209,7 @@ export function start(port = 3000) {
 
       if (m.t === 'join' && !room) {
         const r = rooms.get(String(m.room || '').toUpperCase());
-        if (!r) return send(ws, { t: 'err', reason: 'noroom' });
+        if (!r) return send(ws, { t: 'err', reason: missLimit.hit(ip, MAX_MISSES_PER_WINDOW) ? 'noroom' : 'busy' });
         const clientId = String(m.clientId || '').slice(0, 40) || Math.random().toString(36).slice(2);
         const name = String(m.name || '').slice(0, 14);
         let d = null;
@@ -230,6 +278,8 @@ export function start(port = 3000) {
 
   const timer = setInterval(() => {
     const now = Date.now();
+    hostLimit.sweep();
+    missLimit.sweep();
     for (const ws of wss.clients) {
       if (!ws.isAlive) {
         ws.terminate();

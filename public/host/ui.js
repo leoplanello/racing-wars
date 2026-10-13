@@ -85,7 +85,7 @@ export class UI {
     const fallback = (icon) => 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120"><text x="100" y="76" font-size="52" text-anchor="middle">${icon || '?'}</text></svg>`);
     const card = (c, i) => `<div class="tcard ${i === sel ? 'sel' : ''} ${c.locked ? 'lock' : ''} ${c.folder ? 'folder' : ''}" data-nav="pick" data-i="${i}">${c.folder ? '<span class="tl">📁 PASTA</span>' : ''}<img src="${esc(c.thumb || fallback(c.icon))}" alt="" loading="lazy"><div class="tn">${c.icon} ${esc(c.name)}</div><div class="ts">${esc(c.locked ? 'Em breve' : c.folder ? `${c.subtitle} · abrir ▸` : c.subtitle || (c.def ? 'Circuito próprio' : ''))}</div></div>`;
     this.screen.innerHTML = `<div class="scr tracks"><h2>${folder ? 'Circuitos › Sonic' : 'Escolha o circuito'}</h2>
-      <div class="tgrid">${list.map(card).join('')}</div>
+      <div class="tgrid">${list.map((c, i) => (c.locked && !list[i - 1]?.locked ? '<div class="tbreak"></div>' : '') + card(c, i)).join('')}</div>
       <div class="tinfo"><b>${cur.icon} ${esc(cur.name)}</b> — ${esc(cur.desc)}</div>
       <div class="tfoot">
         ${cur.race ? `<span class="hint">Campeonato (<b>▲▼</b>): <button class="btn" style="font-size:15px;padding:5px 14px" data-nav="up">${champLen} ${champLen > 1 ? 'pistas' : 'pista'} ▸</button></span>` : ''}

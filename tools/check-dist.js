@@ -15,6 +15,7 @@ function importMap(htmlFile) {
   return m ? JSON.parse(m[1]).imports : {};
 }
 function resolveSpec(spec, fromFile, map, mapBase) {
+  spec = spec.replace(/[?#].*$/, ''); // cache-busting (?v=2)
   if (spec.startsWith('.')) return path.resolve(path.dirname(fromFile), spec);
   if (spec.startsWith('http')) return null;
   for (const [k, v] of Object.entries(map)) {

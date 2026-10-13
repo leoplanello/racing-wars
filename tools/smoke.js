@@ -96,7 +96,27 @@ try {
   assert.equal(j0.id, 0);
   assert.equal(j0.master, false, 'nao retoma o Master');
 
-  console.log('smoke OK: sala', code, '- 8 celulares, Master, binario, reconexao, sala cheia');
+  // segunda sala em paralelo: isolada da primeira (mesmo clientId vale em salas distintas)
+  const host2 = client();
+  await host2.open;
+  host2.send({ t: 'host' });
+  const code2 = (await host2.next((m) => m.t === 'room')).code;
+  assert.notEqual(code2, code);
+  const q = client();
+  await q.open;
+  q.send({ t: 'join', room: code2, clientId: 'cid3', name: 'Q3' });
+  const jq = await q.next((m) => m.t === 'joined');
+  assert.equal(jq.id, 0, 'sala 2 comeca do zero');
+  assert.equal(jq.master, true);
+  q.ws.send(encodeInput(0.25, 0, 1), { binary: true });
+  const b2 = await host2.next((m) => m.bin);
+  assert.equal(decodeHostInput(b2.bin).id, 0);
+  phones[3].ws.send(encodeInput(0.9, 1, 99), { binary: true });
+  const b1 = await host.next((m) => m.bin);
+  assert.equal(decodeHostInput(b1.bin).seq, 99, 'input da sala 1 so chega ao host 1');
+  await assert.rejects(host2.next((m) => m.bin, 300), /timeout/, 'host 2 nao recebe input da sala 1');
+
+  console.log('smoke OK: salas', code, code2, '- 8 celulares, Master, binario, reconexao, sala cheia, 2 salas isoladas');
 } catch (e) {
   console.error('smoke FALHOU:', e);
   process.exitCode = 1;

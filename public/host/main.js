@@ -57,7 +57,7 @@ async function loadRemoteTracks() {
       id: t.id, icon: '🦔', group: 'sonic', name: t.name, race: true, laps: t.laps, subtitle: t.subtitle || 'SRB2Kart',
       desc: `${t.subtitle || 'SRB2Kart'} · ${t.laps} voltas · ~${Math.round(t.length / 34 / 60 * 10) / 10} min`,
       remote: REMOTE_BASE + t.file,
-      thumb: t.thumb ? REMOTE_BASE + t.thumb : '', padThumb: t.thumb ? '../tracks/srb2kart/' + t.thumb : '',
+      thumb: t.thumb ? REMOTE_BASE + t.thumb : '', padThumb: t.thumb ? '../tracks/srb2kart/' + t.thumb : '', // relativo a /pad/ (o servidor redireciona /pad para /pad/)
     }));
     if (list.length) {
       // as pistas do Sonic ficam numa pasta: na raiz do menu aparece so o item-pasta
@@ -70,7 +70,7 @@ async function loadRemoteTracks() {
 }
 
 /** Pistas visiveis no menu: a raiz (sem `group`) ou o conteudo da pasta aberta (`S.folder`). */
-const visibleTracks = () => TRACKS.filter((t) => (S.folder ? t.group === S.folder : !t.group));
+const visibleTracks = () => TRACKS.filter((t) => (S.folder ? t.group === S.folder : !t.group && (!t.folder || dbg.on)));
 /** Seleciona uma pista pelo id, abrindo a pasta dela se for o caso. */
 function selectTrack(id) {
   const i = TRACKS.findIndex((t) => t.id === id);
@@ -108,7 +108,15 @@ const editor = new DebugEditor({
 });
 dbg.onEditor = () => editor.toggle();
 dbg.onSelectMode = () => editor.toggleSelect();
-dbg.onToggle = (on) => { if (!on) editor.hide(); };
+dbg.onToggle = (on) => {
+  if (!on) {
+    editor.hide();
+    // a pasta Sonic so existe com o debug ligado: se estava aberta/selecionada, volta para a raiz
+    const cur = TRACKS[S.trackIdx];
+    if (S.phase === 'tracks' && (S.folder || cur?.folder || cur?.group)) { S.folder = null; selectTrack('test'); }
+  }
+  if (S.phase === 'tracks') refresh();
+};
 let world = null;
 
 const S = {
@@ -266,7 +274,7 @@ setInterval(syncPhones, 120);
 async function loadIps() {
   if (window.RW?.static) { refresh(); return; }
   try {
-    const r = await (await fetch('/api/lan')).json();
+    const r = await (await fetch(new URL('api/lan', document.baseURI))).json();
     S.ips = r.ips; S.port = r.port;
   } catch {}
   refresh();
@@ -275,19 +283,16 @@ loadIps();
 
 function padUrl() {
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  if (!S.code) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    let c = '';
-    for (let i = 0; i < 4; i++) c += chars[Math.floor(Math.random() * chars.length)];
-    S.code = c;
-  }
+  // o codigo vem do servidor (onRoom); ate la o QR nao e mostrado
+  const code = S.code || '';
+  // dominio publico (ou proxy com prefixo): a URL do celular sai da propria pagina, qualquer que seja o prefixo
+  const pad = new URL('pad/', document.baseURI.replace(/host\/(index\.html)?$/, ''));
   if (!local || location.protocol === 'https:') {
-    const basePath = location.pathname.replace(/\/(host\/)?(index\.html)?$/, '');
-    const cleanBase = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-    return { base: `${location.host}${cleanBase}`, url: `${location.origin}${cleanBase}/pad/?room=${S.code}` };
+    return { base: pad.host + pad.pathname.replace(/\/pad\/$/, ''), url: `${pad.href}?room=${code}` };
   }
+  // rede local: troca localhost pelo IP da maquina para o celular alcancar
   const host = S.ips[S.ipIdx] ? `${S.ips[S.ipIdx]}:${S.port}` : location.host;
-  return { base: host, url: `http://${host}/pad?room=${S.code}` };
+  return { base: host, url: `http://${host}${pad.pathname}?room=${code}` };
 }
 
 function refresh() {

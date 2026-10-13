@@ -126,8 +126,9 @@ body.split #hud .kill { top: auto; bottom: 8px; }
 
 /* seletor de pistas: grade que rola, com o rodape sempre visivel */
 .scr.tracks { justify-content: flex-start; overflow: hidden; }
-.tgrid { flex: 1 1 0; min-height: 0; width: 100%; max-width: 1400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(112px, 15vw, 190px), 1fr)); gap: clamp(6px, 1.2vw, 12px); padding: 8px 6px; align-content: start; scrollbar-width: thin; }
-.tcard { position: relative; border-radius: 14px; background: var(--panel); border: 3px solid #ffffff20; padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0; }
+.tgrid { flex: 1 1 0; min-height: 0; width: 100%; max-width: 1400px; overflow-y: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(6px, 1.2vw, 12px); padding: 8px 6px; align-content: start; scrollbar-width: thin; }
+.tbreak { flex: 0 0 100%; height: 0; } /* "Em breve" vai para uma segunda linha, deixando as pistas jogaveis centralizadas */
+.tcard { width: clamp(112px, 15vw, 190px); flex: 0 0 auto; position: relative; border-radius: 14px; background: var(--panel); border: 3px solid #ffffff20; padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; text-align: left; min-width: 0; }
 .tcard img { width: 100%; aspect-ratio: 5 / 3; object-fit: contain; border-radius: 9px; background: #0b0e16; display: block; }
 .tcard .tn { font-weight: 900; font-size: clamp(11px, 2vh, 15px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcard .ts { font-size: clamp(9px, 1.7vh, 12px); color: #aab6d3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

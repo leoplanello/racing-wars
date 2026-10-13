@@ -42,10 +42,14 @@ test/                  testes node --test
 ```
 
 ## Protocolo
-Sala de 4 letras. Host: `{t:'host'}` → `{t:'room', code}`. Celular: `{t:'join', room, clientId, name}` → `{t:'joined', deviceId, master}`.
+Sala de 4 letras. Host: `{t:'host'}` → `{t:'room', code}`. Celular: `{t:'join', room, clientId, name, avatar}` → `{t:'joined', deviceId, master}`.
 O servidor avisa o host com `connect`, `disconnect` e `master`. Host para celulares: `{t:'to', id, data}` e `{t:'all', data}`. Do celular ao host, o servidor embrulha JSON como `{t:'from', id, data}`.
 
 **Input binário** (4 bytes, ~30 Hz + envio imediato em toque): o celular envia `[0x01, steer:int8, botões:u8, seq:u8]`; o servidor entrega ao host `[0x81, deviceId, steer, botões, seq]`. Bit0 = usar item, bit1 = "away" (aba em segundo plano), bit2 = ré (as duas setas juntas).
+
+**P2P (WebRTC)**: a cada `connect` o host abre um `RTCPeerConnection` com o celular e um canal `input` sem ordem nem retransmissão. Oferta/resposta e candidatos ICE vão como `{t:'rtc', sdp|cand}` pelo próprio WebSocket. Com o canal aberto, o celular manda o mesmo pacote de 4 bytes direto para a tela (o indicador mostra "● P2P"); sem canal, segue pelo servidor. Só STUN público, sem TURN.
+
+**Perfil**: o celular manda `{t:'profile', name, avatar}` a qualquer momento fora da corrida (botão "✏️ Perfil"). `avatar` é um emoji ou uma foto JPEG 64x64 em data URL; o servidor valida (`cleanAvatar` em `shared/protocol.js`), guarda na memória e repassa ao host, e o `connect` traz `name` e `avatar` quando o host reconecta. O celular guarda o perfil em `localStorage`.
 Menu (Master): `{t:'menu', k:'left'|'right'|'up'|'down'|'ok'|'back'}`.
 
 **Reconexão**: o celular guarda `clientId` em `localStorage`; ao voltar reassume o mesmo `deviceId` (carro, cor, pontos). Se o Master sair, o próximo vira Master.

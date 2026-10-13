@@ -1,5 +1,5 @@
 // Controle do celular: direcao cega (metade esquerda) + item (metade direita).
-import { encodeInput, BTN_FIRE, BTN_AWAY, BTN_REV } from '/shared/protocol.js';
+import { encodeInput, BTN_FIRE, BTN_AWAY, BTN_REV, cleanAvatar } from '/shared/protocol.js';
 import { wsUrl } from '/shared/wsurl.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,7 +24,7 @@ function connect() {
   S.ws = ws;
   ws.onopen = () => {
     S.retry = 0;
-    ws.send(JSON.stringify({ t: 'join', room: S.room, clientId, name: store('rw-name') || '' }));
+    ws.send(JSON.stringify({ t: 'join', room: S.room, clientId, name: store('rw-name') || '', avatar: store('rw-avatar') || '' }));
   };
   ws.onmessage = (ev) => {
     const m = JSON.parse(ev.data);
@@ -49,6 +49,7 @@ function connect() {
       case 'st': applyState(m); break;
       case 'vib': if (navigator.vibrate) navigator.vibrate(m.p); break;
       case 'pong': S.rtt = Math.round(performance.now() - m.ts); $('ping').style.color = S.rtt < 60 ? '#4dff88' : S.rtt < 140 ? '#ffd60a' : '#ff6b6b'; send({ t: 'rtt', ms: S.rtt }); break;
+      case 'rtc': onRtc(m); break;
       case 'hostgone': showMode('wait', { title: 'Tela principal desconectada', sub: 'Aguardando reconexão…' }); break;
     }
   };
@@ -69,7 +70,7 @@ function applyState(m) {
   $('who').textContent = m.name;
   $('pts').textContent = m.pts !== undefined && m.mode !== 'menu' && m.mode !== 'wait' && m.mode !== 'dead' ? `${m.pts} pts` : '';
   if (m.mode === 'drive') {
-    $('drive').hidden = false; $('menu').hidden = true; $('msg').hidden = true;
+    $('drive').hidden = false; $('menu').hidden = true; $('msg').hidden = true; $('skull').hidden = true; $('editp').hidden = true; closeProfile();
     const [label, id] = (m.item || '').split('|');
     if (id === 'mine') $('ico').innerHTML = '<span class="mine-ico"></span>'; else $('ico').textContent = { nitro: '🚀', missile: '🎯', whomp: '🧲', ice: '❄️' }[id] || '';
     $('itl').textContent = label || '';
@@ -88,6 +89,8 @@ function showMode(kind, m) {
   $('menu').hidden = kind !== 'menu';
   $('msg').hidden = kind !== 'msg' && kind !== 'wait';
   $('skull').hidden = kind !== 'dead';
+  $('editp').hidden = kind === 'drive' || kind === 'dead';
+  if (kind === 'drive' || kind === 'dead') closeProfile();
   S.mode = kind;
   S.steer = 0; S.fire = false; S.rev = false; S.held = { L: false, R: false }; touches.clear();
   if (kind === 'menu') {
@@ -123,6 +126,8 @@ function readTouches() {
   for (const z of touches.values()) { if (z === 'L') L = true; else if (z === 'R') R = true; else A = true; }
   S.held = { L, R };
   S.rev = L && R;
+  // direcao direta: a suavizacao fica so na simulacao (CAR.steerRate); rampa aqui so atrasava
+  S.steer = S.rev ? 0 : (R ? 1 : 0) - (L ? 1 : 0);
   S.fire = A;
   $('btnL').classList.toggle('pressed', L);
   $('btnR').classList.toggle('pressed', R);
@@ -134,20 +139,11 @@ function readTouches() {
 function sendInput() {
   if (!S.ws || S.ws.readyState !== 1 || !S.joined) return;
   const buttons = (S.fire ? BTN_FIRE : 0) | (document.hidden ? BTN_AWAY : 0) | (S.rev ? BTN_REV : 0);
-  S.ws.send(encodeInput(S.rev ? 0 : S.steer, buttons, S.seq++, buf));
+  const pkt = encodeInput(S.rev ? 0 : S.steer, buttons, S.seq++, buf);
+  if (S.dc?.readyState === 'open') S.dc.send(pkt);
+  else S.ws.send(pkt);
 }
 
-// volante digital suavizado: segurar uma seta leva a +-1 em ~0,05 s
-let lastTick = performance.now();
-function steerTick() {
-  const now = performance.now(), dt = Math.min(0.1, (now - lastTick) / 1000);
-  lastTick = now;
-  const held = S.held || { L: false, R: false };
-  const want = S.rev ? 0 : (held.R ? 1 : 0) - (held.L ? 1 : 0);
-  const rate = want === 0 ? 28 : 22; // volante rapido: vira com facilidade
-  S.steer += Math.max(-rate * dt, Math.min(rate * dt, want - S.steer));
-  if (Math.abs(S.steer) < 0.01) S.steer = 0;
-}
 
 function touchStart(e) {
   if (S.mode !== 'drive') return;
@@ -219,6 +215,72 @@ $('fs').addEventListener('click', () => {
   (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.then?.(() => screen.orientation?.lock?.('landscape').catch(() => {})).catch(() => {});
 });
 
+// ------------------------------------------------------------------ P2P
+// A tela abre um canal direto (WebRTC) para o input; a sinalizacao passa pelo WebSocket. Sem canal, usa o WebSocket.
+const ICE = [{ urls: 'stun:stun.l.google.com:19302' }];
+let rtcChain = Promise.resolve();
+function onRtc(m) {
+  rtcChain = rtcChain.then(async () => {
+    if (m.sdp) {
+      S.pc?.close();
+      S.dc = null;
+      const pc = new RTCPeerConnection({ iceServers: ICE });
+      S.pc = pc;
+      pc.onicecandidate = (e) => e.candidate && send({ t: 'rtc', cand: e.candidate.toJSON() });
+      pc.ondatachannel = (e) => {
+        const dc = e.channel;
+        const mark = () => { if (S.pc === pc) { S.dc = dc.readyState === 'open' ? dc : null; $('ping').textContent = S.dc ? '● P2P' : '●'; } };
+        dc.onopen = dc.onclose = mark;
+      };
+      await pc.setRemoteDescription(m.sdp);
+      await pc.setLocalDescription(await pc.createAnswer());
+      send({ t: 'rtc', sdp: pc.localDescription.toJSON() });
+    } else if (m.cand && S.pc) await S.pc.addIceCandidate(m.cand);
+  }).catch(() => {});
+}
+
+// ------------------------------------------------------------------ perfil (nome + foto/emoji), editavel fora da corrida
+const EMOJIS = ['😎', '🤠', '👽', '🤖', '👻', '🐱', '🐶', '🦊', '🐸', '🐵', '🦄', '🐙', '🔥', '⚡', '🍕', '👑'];
+const avatarHtml = (a) => (!a ? '🙂' : a.startsWith('data:') ? `<img src="${a}" alt="">` : a.replace(/[<>&"]/g, ''));
+function showAvatar() {
+  const a = store('rw-avatar') || '';
+  $('pav').innerHTML = avatarHtml(a);
+  $('me').innerHTML = a ? `<span class="pav">${avatarHtml(a)}</span>` : '';
+  for (const b of $('emojis').children) b.classList.toggle('sel', b.textContent === a);
+}
+let profTimer = 0;
+function pushProfile() {
+  clearTimeout(profTimer);
+  profTimer = setTimeout(() => send({ t: 'profile', name: store('rw-name') || '', avatar: store('rw-avatar') || '' }), 150);
+}
+function setAvatar(a) {
+  store('rw-avatar', cleanAvatar(a));
+  showAvatar();
+  pushProfile();
+}
+function closeProfile() { $('prof').hidden = true; }
+$('emojis').innerHTML = EMOJIS.map((e) => `<button type="button">${e}</button>`).join('');
+$('emojis').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setAvatar(b.textContent); });
+$('editp').addEventListener('click', () => { $('pname').value = store('rw-name') || ''; showAvatar(); $('prof').hidden = false; });
+$('pdone').addEventListener('click', closeProfile);
+$('pclear').addEventListener('click', () => setAvatar(''));
+$('pname').addEventListener('input', () => { store('rw-name', $('pname').value.trim()); $('name').value = $('pname').value; pushProfile(); });
+$('pfile').addEventListener('change', async () => {
+  const f = $('pfile').files[0];
+  $('pfile').value = '';
+  if (!f) return;
+  try {
+    // foto reduzida a 64x64 (recorte central) no proprio celular: ~3 KB, cabe no limite do servidor
+    const img = await createImageBitmap(f);
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const k = Math.min(img.width, img.height);
+    c.getContext('2d').drawImage(img, (img.width - k) / 2, (img.height - k) / 2, k, k, 0, 0, 64, 64);
+    setAvatar(c.toDataURL('image/jpeg', 0.7));
+  } catch {}
+});
+showAvatar();
+
 // ------------------------------------------------------------------ entrada
 function join() {
   const code = $('code').value.trim().toUpperCase();
@@ -239,7 +301,8 @@ $('code').value = urlRoom || saved || '';
 if (urlRoom.length === 4 || (saved && saved.length === 4)) join();
 
 // heartbeat de entrada + ping
-setInterval(() => { steerTick(); if (S.joined && S.mode === 'drive') sendInput(); }, 33);
+// reenvio periodico: o canal P2P nao retransmite, entao um pacote perdido se corrige no proximo
+setInterval(() => { if (S.joined && S.mode === 'drive') sendInput(); }, 33);
 setInterval(() => { if (S.joined && S.mode !== 'drive') sendInput(); }, 500);
 setInterval(() => send({ t: 'ping', ts: performance.now() }), 2000);
 document.addEventListener('visibilitychange', () => sendInput());

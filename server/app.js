@@ -6,7 +6,7 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { renderPage } from '../tools/page.js';
-import { MAX_PLAYERS, ROOM_CODE_LEN, ROOM_ALPHABET, PAD_INPUT, HOST_INPUT } from '../shared/protocol.js';
+import { MAX_PLAYERS, ROOM_CODE_LEN, ROOM_ALPHABET, PAD_INPUT, HOST_INPUT, cleanAvatar } from '../shared/protocol.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = {
@@ -200,7 +200,7 @@ export function start(port = 3000) {
         isHost = true;
         send(ws, { t: 'room', code: r.code });
         for (const d of r.devices.values()) {
-          if (d.ws) send(ws, { t: 'connect', id: d.id, name: d.name, clientId: d.clientId });
+          if (d.ws) send(ws, { t: 'connect', id: d.id, name: d.name, avatar: d.avatar, clientId: d.clientId });
         }
         pickMaster(r);
         send(ws, { t: 'master', id: r.masterId });
@@ -229,17 +229,18 @@ export function start(port = 3000) {
             r.devices.delete(id);
             send(r.host, { t: 'disconnect', id, gone: true });
           }
-          d = { id, clientId, name, ws: null, joinedAt: Date.now(), leftAt: 0 };
+          d = { id, clientId, name, avatar: '', ws: null, joinedAt: Date.now(), leftAt: 0 };
           r.devices.set(id, d);
         }
         if (name) d.name = name;
+        if (m.avatar !== undefined) d.avatar = cleanAvatar(m.avatar);
         d.ws = ws;
         room = r;
         dev = d;
         if (r.masterId < 0 || !r.devices.get(r.masterId)?.ws) r.masterId = -1;
         pickMaster(r);
         send(ws, { t: 'joined', id: d.id, master: d.id === r.masterId, room: r.code });
-        send(r.host, { t: 'connect', id: d.id, name: d.name, clientId: d.clientId });
+        send(r.host, { t: 'connect', id: d.id, name: d.name, avatar: d.avatar, clientId: d.clientId });
         send(r.host, { t: 'master', id: r.masterId });
         return;
       }
@@ -254,6 +255,12 @@ export function start(port = 3000) {
         }
       } else if (dev) {
         if (m.t === 'ping') return send(ws, { t: 'pong', ts: m.ts });
+        if (m.t === 'profile') {
+          // guardado no servidor para sobreviver a reconexao do host; o host recebe a versao validada
+          dev.name = String(m.name || '').slice(0, 14);
+          dev.avatar = cleanAvatar(m.avatar);
+          return send(room.host, { t: 'from', id: dev.id, data: { t: 'profile', name: dev.name, avatar: dev.avatar } });
+        }
         send(room.host, { t: 'from', id: dev.id, data: m });
       }
     });

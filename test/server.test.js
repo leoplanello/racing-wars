@@ -55,3 +55,43 @@ test('hosts alem do limite por IP recebem busy', async () => {
     await app.close();
   }
 });
+
+test('perfil: avatar validado, repassado ao host e mantido na reconexao do host', async () => {
+  const app = await start(0);
+  const url = `ws://127.0.0.1:${app.port}/ws`;
+  const socks = [];
+  const open = async () => { const w = new WebSocket(url); socks.push(w); await new Promise((r) => w.on('open', r)); return w; };
+  const wait = (w, pred) => new Promise((r) => w.on('message', (d, bin) => { if (bin) return; const m = JSON.parse(d.toString()); if (pred(m)) r(m); }));
+  try {
+    const host = await open();
+    const room = wait(host, (m) => m.t === 'room');
+    host.send(JSON.stringify({ t: 'host' }));
+    const { code } = await room;
+    const pad = await open();
+    const joined = wait(pad, (m) => m.t === 'joined');
+    pad.send(JSON.stringify({ t: 'join', room: code, clientId: 'p1', name: 'Ana', avatar: '<img onerror=x>' }));
+    await joined;
+    const photo = 'data:image/jpeg;base64,' + 'A'.repeat(100);
+    let got = wait(host, (m) => m.t === 'from' && m.data.t === 'profile');
+    pad.send(JSON.stringify({ t: 'profile', name: 'Bia', avatar: photo }));
+    assert.deepEqual((await got).data, { t: 'profile', name: 'Bia', avatar: photo });
+    for (const bad of ['data:image/svg+xml;base64,AAAA', 'data:image/png;base64,' + 'A'.repeat(13000), '<b>', 'javascript:x']) {
+      got = wait(host, (m) => m.t === 'from' && m.data.t === 'profile');
+      pad.send(JSON.stringify({ t: 'profile', name: 'Bia', avatar: bad }));
+      assert.equal((await got).data.avatar, '', bad.slice(0, 30));
+    }
+    got = wait(host, (m) => m.t === 'from' && m.data.t === 'profile');
+    pad.send(JSON.stringify({ t: 'profile', name: 'Bia', avatar: '🦊' }));
+    assert.equal((await got).data.avatar, '🦊');
+    host.close();
+    const host2 = await open();
+    const conn = wait(host2, (m) => m.t === 'connect');
+    host2.send(JSON.stringify({ t: 'host', code }));
+    const c = await conn;
+    assert.equal(c.name, 'Bia');
+    assert.equal(c.avatar, '🦊');
+  } finally {
+    for (const w of socks) w.terminate();
+    await app.close();
+  }
+});

@@ -20,7 +20,7 @@
 </div>
 
 <div id="pad" class="view" hidden>
-  <div id="hdr"><span id="who"></span><span id="pts"></span><span id="ping">●</span><button id="fs" aria-label="Tela cheia">⛶</button></div>
+  <div id="hdr"><span id="me"></span><span id="who"></span><span id="pts"></span><span id="ping">●</span><button id="editp" aria-label="Editar perfil">✏️ Perfil</button><button id="fs" aria-label="Tela cheia">⛶</button></div>
   <div id="drive" hidden>
     <div id="act"><div id="ico"></div><div id="itl"></div><div class="hint" id="firehint">AÇÃO</div></div>
     <div id="arrows">
@@ -47,6 +47,11 @@
   </div>
   <div id="msg" hidden></div>
   <div id="skull" hidden>💀</div>
+  <div id="prof" hidden>
+    <div class="prow"><span id="pav" class="pav"></span><input id="pname" maxlength="14" autocomplete="off" placeholder="Seu nome"></div>
+    <div id="emojis"></div>
+    <div class="prow"><label class="pbtn">📷 Foto<input id="pfile" type="file" accept="image/*" capture="user" hidden></label><button class="pbtn" id="pclear">Sem foto</button><button class="pbtn ok" id="pdone">PRONTO</button></div>
+  </div>
 </div>
 <div id="rotate"><div class="ph">📱</div>Gire o celular<br>para o modo paisagem</div>
 <script src="/pad/pad.js" type="module"></script>

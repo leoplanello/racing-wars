@@ -1,5 +1,5 @@
 // Host: orquestra menus, rede, simulacao e render.
-import { COLORS, ITEM_LABEL, MAX_PLAYERS, BTN_FIRE, BTN_AWAY, BTN_REV } from '/shared/protocol.js';
+import { COLORS, ITEM_LABEL, MAX_PLAYERS, BTN_FIRE, BTN_AWAY, BTN_REV, cleanAvatar } from '/shared/protocol.js';
 import { buildTrack } from '/sim/track.js';
 import { Game } from '/sim/game.js';
 import { CAMERA, KartCamera, kartFovV } from '/sim/camera.js';
@@ -180,7 +180,7 @@ function removeBot() {
 }
 function slots() {
   const out = Array(MAX_PLAYERS).fill(null);
-  for (const d of S.devices.values()) out[d.id] = { kind: 'phone', name: phoneName(d), master: d.id === S.masterId, connected: d.connected };
+  for (const d of S.devices.values()) out[d.id] = { kind: 'phone', name: phoneName(d), avatar: d.avatar, master: d.id === S.masterId, connected: d.connected };
   for (const c of S.bots.keys()) out[c] = { kind: 'bot', name: 'Bot ' + COLORS[c].name };
   if (S.kbd !== null) out[S.kbd] = { kind: 'kbd', name: 'Teclado' };
   return out;
@@ -202,7 +202,7 @@ const net = new HostNet({
   onConnect: (m) => {
     let d = S.devices.get(m.id);
     if (!d) { d = { id: m.id, name: '', connected: true, steer: 0, fireHeld: false, fireQueued: false, away: false, rev: false, rtt: 0, sent: '' }; S.devices.set(m.id, d); }
-    d.connected = true; d.name = m.name || d.name; d.sent = '';
+    d.connected = true; d.name = m.name || d.name; d.avatar = cleanAvatar(m.avatar ?? d.avatar); d.sent = '';
     if (S.bots.has(m.id)) { S.bots.delete(m.id); addBot(); }
     if (S.kbd === m.id) { S.kbd = null; const c = freeColor(); if (c >= 0) S.kbd = c; }
     audio.play('join');
@@ -231,7 +231,7 @@ const net = new HostNet({
     if (!d) return;
     if (m.t === 'menu' && id === S.masterId) nav(m.k, m.i, true);
     else if (m.t === 'rtt') d.rtt = m.ms;
-    else if (m.t === 'name') { d.name = String(m.name || '').slice(0, 14); refresh(); }
+    else if (m.t === 'profile') { d.name = String(m.name || '').slice(0, 14); d.avatar = cleanAvatar(m.avatar); refresh(); }
   },
 });
 net.connect();
@@ -436,6 +436,7 @@ async function startGame(opts = {}) {
   S.geysers = [];
   S.paused = false;
   S.names = new Map(list.map((p) => [p.id, p.name]));
+  S.avatars = new Map(list.map((p) => [p.id, S.devices.get(p.id)?.avatar || '']));
   S.kinds = new Map(list.map((p) => [p.id, p.kind]));
   S.kcams.clear();
   const rng = makeRng(game.rng() * 1e9);
@@ -449,7 +450,7 @@ async function startGame(opts = {}) {
   debris.clear();
   fx.clearScorch();
   ui.clear();
-  ui.initHud(game, S.names);
+  ui.initHud(game, S.names, S.avatars);
   S.phase = 'game';
   audio.setMusic(true);
   handleEvents(game.drainEvents());

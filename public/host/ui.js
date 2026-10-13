@@ -1,9 +1,14 @@
 // Interface DOM do host: menus, HUD, banners, rotulos e marcadores de perigo.
 import qrcode from 'qrcode';
-import { COLORS, ITEM_ICON } from '/shared/protocol.js';
+import { COLORS, ITEM_ICON, cleanAvatar } from '/shared/protocol.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/** Foto (data URL) ou emoji do perfil do celular; '' sem avatar. Revalida porque vem da rede. */
+const avatarHtml = (av) => {
+  const a = cleanAvatar(av);
+  return !a ? '' : a.startsWith('data:') ? `<img class="avatar" src="${a}" alt="">` : `<span class="avatar">${esc(a)}</span>`;
+};
 
 export function qrSvg(text) {
   const qr = qrcode(0, 'M');
@@ -49,7 +54,7 @@ export class UI {
     const slots = o.slots.map((s, i) => {
       if (!s) return `<div class="slot" style="--c:${COLORS[i].hex}"><span class="dot" style="opacity:.25"></span><span style="opacity:.4">livre</span></div>`;
       const tag = s.kind === 'phone' ? (s.master ? '👑 MASTER' : '📱') : s.kind === 'bot' ? '🤖 BOT' : '⌨ TECLADO';
-      return `<div class="slot on" style="--c:${COLORS[i].hex}"><span class="dot"></span>${esc(s.name)}<span class="tag">${tag}${s.connected === false ? ' · off' : ''}</span></div>`;
+      return `<div class="slot on" style="--c:${COLORS[i].hex}">${avatarHtml(s.avatar) || '<span class="dot"></span>'}${esc(s.name)}<span class="tag">${tag}${s.connected === false ? ' · off' : ''}</span></div>`;
     }).join('');
     this.screen.innerHTML = `<div class="scr">
       <div class="logo" style="font-size:min(7vw,70px)">RACING WARS</div>
@@ -123,7 +128,7 @@ export class UI {
   }
 
   // ---------- HUD ----------
-  initHud(game, names) {
+  initHud(game, names, avatars = new Map()) {
     this.vpRoot = null; this.vpEls = null; this.vpKey = '';
     this.laps = game.track.def.laps ?? 3;
     this.race = game.mode === 'race';
@@ -137,7 +142,7 @@ export class UI {
       el.className = 'card-p';
       el.style.setProperty('--c', COLORS[c.color].hex);
       const ticks = Array.from({ length: 20 }, () => '<i></i>').join('');
-      el.innerHTML = `<div class="av">${GLYPH[c.color % 8]}</div><div class="bd"><div class="l1"><span class="nm">${esc(names.get(c.id) || 'Piloto')}</span><span class="rk"></span><span class="it"></span></div><div class="bar">${ticks}</div></div>`;
+      el.innerHTML = `<div class="av">${avatarHtml(avatars.get(c.id)) || GLYPH[c.color % 8]}</div><div class="bd"><div class="l1"><span class="nm">${esc(names.get(c.id) || 'Piloto')}</span><span class="rk"></span><span class="it"></span></div><div class="bar">${ticks}</div></div>`;
       top.appendChild(el);
       this.chips.set(c.id, { el, it: el.querySelector('.it'), rk: el.querySelector('.rk'), ticks: [...el.querySelectorAll('.bar i')], last: -1 });
     }

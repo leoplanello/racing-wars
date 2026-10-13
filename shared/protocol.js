@@ -46,3 +46,12 @@ export function decodeHostInput(bytes, out = { id: 0, steer: 0, buttons: 0, seq:
   out.seq = bytes[4];
   return out;
 }
+
+/** Foto de perfil vinda do celular: emoji curto ou data URL de imagem pequena; qualquer outra coisa vira ''. */
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+export const AVATAR_MAX = 12000;
+export function cleanAvatar(a) {
+  if (typeof a !== 'string') return '';
+  if (a.startsWith('data:')) return a.length <= AVATAR_MAX && AVATAR_RE.test(a) ? a : '';
+  return [...a].length <= 8 && !/[<>&"'\s]/.test(a) ? a : '';
+}

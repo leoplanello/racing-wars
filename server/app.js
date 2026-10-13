@@ -29,9 +29,10 @@ const MAX_MISSES_PER_WINDOW = 30; // codigos inexistentes por IP por minuto (ant
 const PAGES = { '/': ['host', './'], '/host/index.html': ['host', '../'], '/pad/': ['pad', '../'], '/editor/': ['editor', '../'] };
 const REDIRECTS = { '/pad': 'pad/', '/editor': 'editor/' };
 const pageCache = new Map();
+const VER = Date.now().toString(36); // muda a cada deploy/restart: URLs novas para JS/CSS
 function renderFor(p) {
   const [dir, prefix] = PAGES[p];
-  if (!pageCache.has(p)) pageCache.set(p, renderPage(fs.readFileSync(path.join(ROOT, 'public', dir, 'index.html'), 'utf8'), prefix));
+  if (!pageCache.has(p)) pageCache.set(p, renderPage(fs.readFileSync(path.join(ROOT, 'public', dir, 'index.html'), 'utf8'), prefix, undefined, VER));
   return pageCache.get(p);
 }
 
@@ -110,9 +111,11 @@ export function start(port = 3000) {
       res.end(JSON.stringify({ ips: lanAddresses(), port: server.address().port }));
       return;
     }
+    // arquivos versionados (_v/<ver>/...): a URL muda a cada versao, entao podem ficar em cache para sempre
+    const versioned = /^\/_v\/[^/]+\//.test(urlPath);
     let file;
     try {
-      file = resolveFile(req.url);
+      file = resolveFile(versioned ? req.url.replace(/^\/_v\/[^/]+/, '') : req.url);
     } catch {
       file = null;
     }
@@ -127,7 +130,7 @@ export function start(port = 3000) {
       }
       res.writeHead(200, {
         'content-type': MIME[path.extname(file)] || 'application/octet-stream',
-        'cache-control': 'no-cache',
+        'cache-control': versioned ? 'public, max-age=31536000, immutable' : 'no-cache',
       });
       res.end(data);
     });

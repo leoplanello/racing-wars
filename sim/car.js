@@ -32,7 +32,7 @@ export const CAR = {
   a: 1.28, // CG -> eixo dianteiro
   b: 0.92, // CG -> eixo traseiro
   inertia: 1.45, // momento de inercia (massa = 1)
-  g: 62, // escala das aderencias (aceleracao lateral maxima = mu * g)
+  g: 75, // escala das aderencias (aceleracao lateral maxima = mu * g)
   cruise: 42,
   reverseSpeed: 16,
   boostSpeed: 62,
@@ -43,10 +43,12 @@ export const CAR = {
   steerMax: 0.68, // rad no volante, em baixa velocidade
   steerRef: 28, // a esterco diminui com a velocidade
   steerRate: 26, // velocidade do volante (1/s): resposta rapida
-  gripAssist: 1.15, // fracao da aderencia que o auxilio de direcao deixa o volante usar (evita rodar so de esterçar)
+  gripAssist: 1.4, // fracao da aderencia que o auxilio de direcao deixa o volante usar (evita rodar so de esterçar)
   driftLoss: 0.2, // drift leve: fracao da aderencia traseira perdida em curva forte e rapida
   driftSpeed: 22, // velocidade a partir da qual o drift comeca a valer
-  slipDamp: 14, // amortece o giro quando o carro anda de lado: segura o drift sem rodar
+  slipDamp: 25, // amortece o giro quando o carro anda de lado: segura o drift sem rodar
+  betaLo: 0.14, // rad: angulo de deslize a partir do qual a traseira comeca a recuperar a aderencia do drift
+  betaHi: 0.35, // rad: angulo em que a perda do drift some por completo (limita o drift em ~12-14 graus)
   steerCurve: 0.8, // <1 deixa o volante mais sensivel perto do centro (|s|^curve)
   catchupBoost: 0.2, // retardatario perto de sair do quadro ganha ate +20% de velocidade
   alphaSatF: 0.16, // rad: deriva em que o pneu dianteiro satura
@@ -226,7 +228,11 @@ export function stepCar(car, track, dt, events) {
   } else if (track.boundary === 'void') {
     if (ad > hw && !car.air && car.state !== 'stun') startFall(car, events, 'fall');
   }
-  if (track.hasElev) for (let i = 0; i < HULL.length; i++) cliffContact(car, track, i, events);
+  if (track.hasElev) {
+    for (let i = 0; i < HULL.length; i++) cliffContact(car, track, i, events);
+    // a lateral da rampa/plateau pode empurrar o carro para alem do muro: o muro tem a ultima palavra
+    if (!track.map && track.boundary === 'wall') for (let i = 0; i < HULL.length; i++) wallContact(car, track, i, hw, events);
+  }
 
   if (car.state === 'run' || car.locked) {
     verticalStep(car, track, dt, events, px, pz);
@@ -337,7 +343,7 @@ function verticalStep(car, track, dt, events, px, pz) {
       else if (impact < -4) {
         // quique da suspensao, relativo ao piso: em face de subida o piso ja sobe `groundVy`; sem somar isso o carro
         // re-pousava a cada passo (quicando ate sair da rampa)
-        car.vy = -impact * 0.18;
+        car.vy = Math.max(0, groundVy) - impact * 0.18;
         if (events) events.push({ type: 'land', car: car.id, x: car.x, z: car.z, strength: Math.min(1, -impact / 14) });
       } else { car.air = false; car.vy = Math.min(0, car.gvy ?? 0) * 0.5; } // pouso suave: segue a inclinacao do chao
     }
@@ -403,7 +409,13 @@ function driveStep(car, surf, dt) {
   const driftK = Math.min(1, Math.max(0, (Math.abs(car.steerSm) - 0.55) / 0.35)) * Math.min(1, Math.max(0, (u - CAR.driftSpeed) / 12));
   // o drift entra e sai aos poucos (sem degrau de aderencia que faria o carro rodar)
   car.drift = (car.drift || 0) + (driftK - (car.drift || 0)) * (1 - Math.exp(-(driftK > (car.drift || 0) ? 2.5 : 6) * dt));
-  const fmaxRd = fmaxR0 * (1 - CAR.driftLoss * car.drift * (car.boost > 0 ? 0.4 : 1));
+  // auto-limite: quanto maior o angulo de deslize, mais a traseira recupera (drift estavel, sem giro descontrolado)
+  const beta = Math.atan2(Math.abs(v), Math.max(Math.abs(u), 6));
+  const bt = Math.min(1, Math.max(0, (beta - CAR.betaLo) / (CAR.betaHi - CAR.betaLo)));
+  const recover = bt * bt * (3 - 2 * bt);
+  // contra-esterco (volante para o lado do deslize): a traseira volta de vez
+  const counter = car.steerSm * v > 0 && Math.abs(car.steerSm) > 0.25 ? Math.min(1, Math.abs(v) / 2) : 0;
+  const fmaxRd = fmaxR0 * (1 - CAR.driftLoss * car.drift * (1 - recover) * (1 - counter) * (car.boost > 0 ? 0.4 : 1));
 
   // volante suavizado; menos esterco em alta velocidade
   car.steerSm += Math.max(-CAR.steerRate * dt, Math.min(CAR.steerRate * dt, car.steer - car.steerSm));

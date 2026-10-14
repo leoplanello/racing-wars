@@ -62,17 +62,21 @@ test('carro: cruise control chega a velocidade de cruzeiro na reta', () => {
 
 test('carro: parede nao e atravessada nem a 120 u/s (sem tunelamento)', () => {
   const wallTrack = buildTrack({ ...testCircuit, openLand: false, bridges: [] });
-  const car = makeCar(0);
-  placeCar(car, wallTrack, 300, 0);
-  car.locked = false;
-  car.state = 'run';
   const lim = wallTrack.halfWidth + wallTrack.verge;
-  for (let i = 0; i < 1200; i++) {
-    car.steer = 1; // vira o tempo todo para fora
-    car.vx = Math.cos(car.h + 0.6) * 120;
-    car.vz = Math.sin(car.h + 0.6) * 120;
-    stepCar(car, wallTrack, DT, []);
-    assert.ok(Math.abs(car.near.d) <= lim + 0.01, 'atravessou a parede: d=' + car.near.d);
+  // varias partidas: perto da rampa em s~983 a lateral da rampa (cliffContact) empurrava o carro para fora do muro,
+  // dependendo da trajetoria exata
+  for (const s0 of [290, 300, 310, 320]) {
+    const car = makeCar(0);
+    placeCar(car, wallTrack, s0, 0);
+    car.locked = false;
+    car.state = 'run';
+    for (let i = 0; i < 1200; i++) {
+      car.steer = 1; // vira o tempo todo para fora
+      car.vx = Math.cos(car.h + 0.6) * 120;
+      car.vz = Math.sin(car.h + 0.6) * 120;
+      stepCar(car, wallTrack, DT, []);
+      assert.ok(Math.abs(car.near.d) <= lim + 0.01, 'atravessou a parede (s0=' + s0 + '): d=' + car.near.d);
+    }
   }
 });
 
@@ -126,16 +130,18 @@ test('colisao: bater por tras empurra o carro da frente e freia quem bate', () =
   for (const c of [a, b]) { c.locked = false; c.state = 'run'; }
   const f = { x: Math.cos(b.h), z: Math.sin(b.h) };
   b.vx = f.x * 20; b.vz = f.z * 20;
-  let hit = false;
+  let hitAt = -1, va = 0;
   for (let i = 0; i < 240; i++) {
     stepCar(a, track, DT, []); stepCar(b, track, DT, []);
     const ev = [];
     collideCars(a, b, ev);
-    if (ev.some((e) => e.type === 'bump')) hit = true;
+    if (hitAt < 0 && ev.some((e) => e.type === 'bump')) hitAt = i;
+    // logo depois da batida: b volta a alcancar a, e uma segunda batida na traseira pode rodar o carro (e a mecanica do jogo)
+    if (hitAt >= 0 && i === hitAt + 10) va = a.vx * f.x + a.vz * f.z;
   }
-  assert.ok(hit, 'houve batida');
-  const va = a.vx * f.x + a.vz * f.z, vb = b.vx * f.x + b.vz * f.z;
-  assert.ok(va > 8, 'carro da frente foi empurrado: ' + va);
+  assert.ok(hitAt >= 0, 'houve batida');
+  const vb = b.vx * f.x + b.vz * f.z;
+  assert.ok(va > 15, 'carro da frente foi empurrado: ' + va); // sozinho ele chegaria a ~11 nesse instante
   assert.ok(Math.abs(a.x - b.x) > 1 || Math.abs(a.z - b.z) > 1, 'nao ficam sobrepostos');
   void vb;
 });
@@ -707,7 +713,7 @@ test('area alta sem guardrail: da para cair; pouso brusco capota e o carro fica 
   const s = 0.8 * track.length;
   const car = runnerAt(s, 0, 10);
   const p = track.pointAt(s);
-  car.vx = p.nx * 30 + p.tx * 10; car.vz = p.nz * 30 + p.tz * 10; // para fora da borda
+  car.vx = p.nx * 40 + p.tx * 10; car.vz = p.nz * 40 + p.tz * 10; // para fora da borda (40: com a aderencia atual, 30 nao alcanca a borda)
   let maxY = 0, under = 0, crashed = false;
   const events = [];
   for (let i = 0; i < 1200; i++) {
@@ -894,7 +900,8 @@ test('controle: o volante vira rapido e com folga (guinada alta logo depois do t
     w.push(car.w);
   }
   const steady = w[w.length - 1];
-  assert.ok(steady > 1.4, 'guinada estavel alta: ' + steady);
+  // na terra a curva so de aderencia da ~0,84; o drift estavel fica acima disso (antes ~1,6, que era o giro descontrolado)
+  assert.ok(steady > 1.1, 'guinada estavel alta: ' + steady);
   const t90 = w.findIndex((v, i) => i >= 60 && v >= 0.9 * steady) - 60;
   assert.ok(t90 < 0.3 * 120, 'chega a 90% da guinada em < 0,3 s: ' + t90 / 120);
   // meio volante tambem responde (curva do volante mais sensivel perto do centro)
@@ -1157,6 +1164,69 @@ test('nitro: alto controle - mesma curva com nitro derrapa menos do que sem', ()
   };
   const withBoost = run(true), without = run(false);
   assert.ok(withBoost <= without * 1.1, 'derrapagem com nitro ' + withBoost + ' vs ' + without);
+});
+
+/** Volante total por `hold` s a partir de 1 s; depois `after` (-1 inverte, 0 solta). Devolve metricas do deslize. */
+function driftRun(after, { boost = false, hold = 5, T = 9 } = {}) {
+  const car = makeCar(0);
+  placeCar(car, openTrack, 100, 0);
+  car.locked = false; car.state = 'run'; car.vx = 40; car.vz = 0;
+  const m = { maxBeta: 0, wEnd: 0, flip: null, rec: null, wMax: 0 };
+  for (let i = 0; i < 120 * T; i++) {
+    const t = i * DT;
+    if (boost && t < hold + 1) car.boost = 1;
+    car.steer = t < 1 ? 0 : t < 1 + hold ? 1 : after;
+    stepCar(car, openTrack, DT, []);
+    const c = Math.cos(car.h), s = Math.sin(car.h);
+    const u = car.vx * c + car.vz * s, v = -car.vx * s + car.vz * c;
+    const beta = Math.abs(Math.atan2(v, u));
+    if (t > 1 && t < 1 + hold) { m.maxBeta = Math.max(m.maxBeta, beta); m.wEnd = car.w; }
+    if (t >= 1 + hold) {
+      m.wMax = Math.max(m.wMax, Math.abs(car.w));
+      if (m.flip === null && after < 0 && car.w < 0) m.flip = t - 1 - hold;
+      if (m.rec === null && beta < 0.05 && Math.abs(car.w) < 0.15) m.rec = t - 1 - hold;
+    }
+  }
+  return m;
+}
+
+test('drift: volante total mantido nao vira giro descontrolado (deslize limitado e velocidade mantida)', () => {
+  const m = driftRun(0);
+  assert.ok(m.maxBeta < 0.32, 'deslize maximo ' + (m.maxBeta * 57.3).toFixed(0) + ' graus');
+  assert.ok(m.wEnd < 1.6, 'giro em regime ' + m.wEnd);
+});
+
+test('direcao em velocidade: volante total a 42 u/s fecha a curva (raio < 25) e responde em 0,25 s', () => {
+  const road = buildTrack({ ...testCircuit, bridges: [], baseSurface: 0 });
+  road.hwAt = () => 1e6; road.hardWall = () => false; road.boundary = 'none';
+  const car = makeCar(0);
+  placeCar(car, road, 100, 0);
+  car.locked = false; car.state = 'run'; car.vx = 42; car.vz = 0;
+  let w25 = 0;
+  for (let i = 0; i < 120 * 3; i++) {
+    car.steer = i >= 60 ? 1 : 0;
+    stepCar(car, road, DT, []);
+    if (i === 60 + 30) w25 = car.w;
+  }
+  const u = car.vx * Math.cos(car.h) + car.vz * Math.sin(car.h);
+  assert.ok(w25 > 1.3, 'giro 0,25 s depois do toque: ' + w25);
+  assert.ok(u / car.w < 25, 'raio em regime: ' + u / car.w); // antes da mudanca de aderencia: ~29 (as pistas pedem raio minimo de 18 a 21)
+});
+
+test('drift: soltar o volante endireita o carro rapido (sem ficar escorregando)', () => {
+  const m = driftRun(0);
+  assert.ok(m.rec !== null && m.rec < 0.7, 'recuperacao ' + m.rec);
+});
+
+test('drift: inverter o volante responde logo para o outro lado e nao roda', () => {
+  const m = driftRun(-1);
+  assert.ok(m.flip !== null && m.flip < 0.35, 'inversao do giro em ' + m.flip);
+  assert.ok(m.wMax < 1.8, 'giro maximo apos inverter ' + m.wMax);
+});
+
+test('drift: com nitro continua firme (sem regressao)', () => {
+  const m = driftRun(0, { boost: true });
+  assert.ok(m.maxBeta < 0.15, 'deslize com nitro ' + m.maxBeta);
 });
 
 test('mina: so explode quem encosta na TRASEIRA do carro com a bomba (lado a lado nao conta)', () => {

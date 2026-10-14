@@ -19,7 +19,7 @@
         document.head.appendChild(s);
         dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
       }
-      addEventListener('load', function () { (window.requestIdleCallback || setTimeout)(loadGTM, 2000); });
+      addEventListener('load', function () { window.requestIdleCallback ? requestIdleCallback(loadGTM, { timeout: 2000 }) : setTimeout(loadGTM, 2000); });
       ['scroll', 'pointerdown', 'keydown'].forEach(function (e) { addEventListener(e, loadGTM, { once: true, passive: true }); });
     </script>
 </head>

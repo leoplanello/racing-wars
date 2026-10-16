@@ -226,7 +226,14 @@ export function stepCar(car, track, dt, events) {
   } else if (track.boundary === 'void') {
     if (ad > hw && !car.air && car.state !== 'stun') startFall(car, events, 'fall');
   }
-  if (track.hasElev) for (let i = 0; i < HULL.length; i++) cliffContact(car, track, i, events);
+  if (track.hasElev) {
+    const cx0 = car.x, cz0 = car.z;
+    for (let i = 0; i < HULL.length; i++) cliffContact(car, track, i, events);
+    // o empurrao da falesia pode levar o carro para fora do muro: o muro tem a palavra final
+    if ((car.x !== cx0 || car.z !== cz0) && !track.map && track.boundary === 'wall') {
+      for (let i = 0; i < HULL.length; i++) wallContact(car, track, i, hw, events);
+    }
+  }
 
   if (car.state === 'run' || car.locked) {
     verticalStep(car, track, dt, events, px, pz);
@@ -337,7 +344,7 @@ function verticalStep(car, track, dt, events, px, pz) {
       else if (impact < -4) {
         // quique da suspensao, relativo ao piso: em face de subida o piso ja sobe `groundVy`; sem somar isso o carro
         // re-pousava a cada passo (quicando ate sair da rampa)
-        car.vy = -impact * 0.18;
+        car.vy = Math.max(0, groundVy) - impact * 0.18;
         if (events) events.push({ type: 'land', car: car.id, x: car.x, z: car.z, strength: Math.min(1, -impact / 14) });
       } else { car.air = false; car.vy = Math.min(0, car.gvy ?? 0) * 0.5; } // pouso suave: segue a inclinacao do chao
     }

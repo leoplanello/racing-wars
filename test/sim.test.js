@@ -908,7 +908,7 @@ test('controle: o volante vira rapido e com folga (guinada alta logo depois do t
     stepCar(car, openTrack, DT, []);
     w.push(car.w);
   }
-  const steady = w[w.length - 1];
+  const steady = w[60 + 120]; // 1 s depois do toque (depois a tracao em curva vai tirando o pe e o giro ainda sobe devagar)
   assert.ok(steady > 1.4, 'guinada estavel alta: ' + steady);
   const t90 = w.findIndex((v, i) => i >= 60 && v >= 0.9 * steady) - 60;
   assert.ok(t90 < 0.3 * 120, 'chega a 90% da guinada em < 0,3 s: ' + t90 / 120);

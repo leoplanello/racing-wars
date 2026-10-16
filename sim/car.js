@@ -47,6 +47,7 @@ export const CAR = {
   driftLoss: 0.2, // drift leve: fracao da aderencia traseira perdida em curva forte e rapida
   driftSpeed: 22, // velocidade a partir da qual o drift comeca a valer
   slipDamp: 14, // amortece o giro quando o carro anda de lado: segura o drift sem rodar
+  cornerLift: 0.7, // fracao da tracao que sai do motor com o volante todo (guarda aderencia lateral)
   steerCurve: 0.8, // <1 deixa o volante mais sensivel perto do centro (|s|^curve)
   catchupBoost: 0.2, // retardatario perto de sair do quadro ganha ate +20% de velocidade
   alphaSatF: 0.16, // rad: deriva em que o pneu dianteiro satura
@@ -439,6 +440,8 @@ function driveStep(car, surf, dt) {
   // limite de tracao: a roda traseira nao passa do atrito disponivel (patina)
   const tractionCap = fmaxR0 * 1.15;
   fx_drive = Math.max(-fmaxR0 * 1.2, Math.min(tractionCap, fx_drive));
+  // em curva o motor nao gasta a aderencia traseira que o carro precisa para virar (circulo de atrito): senao a traseira abre e ele subesterca
+  if (fx_drive > 0) fx_drive *= 1 - CAR.cornerLift * Math.min(1, Math.abs(car.steerSm));
   // controle de tracao: tira o pe quando o carro derrapa (evita sobreviragem incontrolavel)
   if (fx_drive > 0) fx_drive *= Math.max(0.55, 1 - 0.9 * (Math.abs(v) / (Math.abs(u) + 3)));
   car.drive = fx_drive;

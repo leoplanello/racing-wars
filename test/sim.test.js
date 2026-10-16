@@ -62,17 +62,20 @@ test('carro: cruise control chega a velocidade de cruzeiro na reta', () => {
 
 test('carro: parede nao e atravessada nem a 120 u/s (sem tunelamento)', () => {
   const wallTrack = buildTrack({ ...testCircuit, openLand: false, bridges: [] });
-  const car = makeCar(0);
-  placeCar(car, wallTrack, 300, 0);
-  car.locked = false;
-  car.state = 'run';
   const lim = wallTrack.halfWidth + wallTrack.verge;
-  for (let i = 0; i < 1200; i++) {
-    car.steer = 1; // vira o tempo todo para fora
-    car.vx = Math.cos(car.h + 0.6) * 120;
-    car.vz = Math.sin(car.h + 0.6) * 120;
-    stepCar(car, wallTrack, DT, []);
-    assert.ok(Math.abs(car.near.d) <= lim + 0.01, 'atravessou a parede: d=' + car.near.d);
+  // varias posicoes iniciais: inclui o trecho de rampa/plateau onde a falesia empurrava o carro para fora do muro
+  for (const [s, off] of [[290, 0], [300, 0], [301, 0], [310, 0], [300, 0.5]]) {
+    const car = makeCar(0);
+    placeCar(car, wallTrack, s, off);
+    car.locked = false;
+    car.state = 'run';
+    for (let i = 0; i < 1200; i++) {
+      car.steer = 1; // vira o tempo todo para fora
+      car.vx = Math.cos(car.h + 0.6) * 120;
+      car.vz = Math.sin(car.h + 0.6) * 120;
+      stepCar(car, wallTrack, DT, []);
+      assert.ok(Math.abs(car.near.d) <= lim + 0.01, `atravessou a parede (s=${s}, off=${off}): d=${car.near.d}`);
+    }
   }
 });
 

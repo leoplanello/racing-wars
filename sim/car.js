@@ -49,6 +49,7 @@ export const CAR = {
   slipDamp: 25, // amortece o giro quando o carro anda de lado: segura o drift sem rodar
   betaLo: 0.14, // rad: angulo de deslize a partir do qual a traseira comeca a recuperar a aderencia do drift
   betaHi: 0.35, // rad: angulo em que a perda do drift some por completo (limita o drift em ~12-14 graus)
+  frontDrive: 0.25, // 4x4: fracao da forca do motor que vai para o eixo dianteiro (o resto, para o traseiro)
   steerCurve: 0.8, // <1 deixa o volante mais sensivel perto do centro (|s|^curve)
   catchupBoost: 0.2, // retardatario perto de sair do quadro ganha ate +20% de velocidade
   alphaSatF: 0.16, // rad: deriva em que o pneu dianteiro satura
@@ -442,8 +443,11 @@ function driveStep(car, surf, dt) {
   let fx_drive = CAR.kp * (target - u);
   fx_drive = Math.max(-CAR.brakeCap, Math.min(cap, fx_drive));
   // limite de tracao: a roda traseira nao passa do atrito disponivel (patina)
-  const tractionCap = fmaxR0 * 1.15;
-  fx_drive = Math.max(-fmaxR0 * 1.2, Math.min(tractionCap, fx_drive));
+  // 4x4: cada eixo recebe sua parte e so passa do atrito dele
+  const kF = CAR.frontDrive;
+  const tractionCap = Math.min((fmaxR0 * 1.15) / (1 - kF), (fmaxF * 1.15) / kF);
+  fx_drive = Math.max(-fmaxR0 * 1.2 / (1 - kF), Math.min(tractionCap, fx_drive));
+  // em curva o motor nao gasta a aderencia traseira que o carro precisa para virar (circulo de atrito): senao a traseira abre e ele subesterca
   // controle de tracao: tira o pe quando o carro derrapa (evita sobreviragem incontrolavel)
   if (fx_drive > 0) fx_drive *= Math.max(0.55, 1 - 0.9 * (Math.abs(v) / (Math.abs(u) + 3)));
   car.drive = fx_drive;
@@ -452,16 +456,19 @@ function driveStep(car, surf, dt) {
   const ua = Math.max(Math.abs(u), 2.0) * (u < 0 ? -1 : 1);
   const alphaF = Math.atan2(v + CAR.a * w, ua) - delta;
   const alphaR = Math.atan2(v - CAR.b * w, ua);
-  const fyF = -fmaxF * Math.tanh(alphaF / CAR.alphaSatF);
+  const rMax = bg > 1 ? 0.5 : 0.85;
+  const ratio = Math.min(rMax, (Math.abs(fx_drive) * (1 - kF)) / (fmaxR0 * 1.15));
+  const ratioF = Math.min(rMax, (Math.abs(fx_drive) * kF) / (fmaxF * 1.15));
+  const fyF = -fmaxF * Math.sqrt(1 - ratioF * ratioF) * Math.tanh(alphaF / CAR.alphaSatF);
   // circulo de atrito do eixo traseiro: quanto mais tracao, menos forca lateral
-  const ratio = Math.min(bg > 1 ? 0.5 : 0.85, Math.abs(fx_drive) / (fmaxR0 * 1.15));
   const fmaxR = fmaxRd * Math.sqrt(1 - ratio * ratio);
   const fyR = -fmaxR * Math.tanh(alphaR / CAR.alphaSatR);
 
   const cd = Math.cos(delta), sd = Math.sin(delta);
-  const du = fx_drive - fyF * sd - 0.35 * u + v * w;
-  const dv = fyF * cd + fyR - u * w;
-  const dw = (CAR.a * fyF * cd - CAR.b * fyR) / CAR.inertia - (0.9 + 0.55 * Math.abs(w)) * w
+  const fxF = fx_drive * kF; // tracao dianteira: esterçada, tambem empurra de lado e gira o carro
+  const du = fx_drive - fxF * (1 - cd) - fyF * sd - 0.35 * u + v * w;
+  const dv = fyF * cd + fxF * sd + fyR - u * w;
+  const dw = (CAR.a * (fyF * cd + fxF * sd) - CAR.b * fyR) / CAR.inertia - (0.9 + 0.55 * Math.abs(w)) * w
     + CAR.slipDamp * Math.max(-0.3, Math.min(0.3, v / (Math.abs(u) + 6))) * Math.min(1, Math.abs(u) / 15);
   car.slip = Math.abs(v);
 

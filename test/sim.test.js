@@ -64,10 +64,10 @@ test('carro: parede nao e atravessada nem a 120 u/s (sem tunelamento)', () => {
   const wallTrack = buildTrack({ ...testCircuit, openLand: false, bridges: [] });
   const lim = wallTrack.halfWidth + wallTrack.verge;
   // varias partidas: perto da rampa em s~983 a lateral da rampa (cliffContact) empurrava o carro para fora do muro,
-  // dependendo da trajetoria exata
-  for (const s0 of [290, 300, 310, 320]) {
+  // dependendo da trajetoria exata; inclui meio metro fora do centro
+  for (const [s, off] of [[290, 0], [300, 0], [301, 0], [310, 0], [300, 0.5]]) {
     const car = makeCar(0);
-    placeCar(car, wallTrack, s0, 0);
+    placeCar(car, wallTrack, s, off);
     car.locked = false;
     car.state = 'run';
     for (let i = 0; i < 1200; i++) {
@@ -75,9 +75,21 @@ test('carro: parede nao e atravessada nem a 120 u/s (sem tunelamento)', () => {
       car.vx = Math.cos(car.h + 0.6) * 120;
       car.vz = Math.sin(car.h + 0.6) * 120;
       stepCar(car, wallTrack, DT, []);
-      assert.ok(Math.abs(car.near.d) <= lim + 0.01, 'atravessou a parede (s0=' + s0 + '): d=' + car.near.d);
+      assert.ok(Math.abs(car.near.d) <= lim + 0.01, `atravessou a parede (s=${s}, off=${off}): d=${car.near.d}`);
     }
   }
+});
+
+test('carro: volante todo em alta velocidade nao abre a curva demais (raio em regime < 30, com drift do main)', () => {
+  const tr = buildTrack({ ...testCircuit, bridges: [], baseSurface: 0 });
+  const car = makeCar(0);
+  placeCar(car, tr, 100, 0);
+  car.locked = false;
+  for (let i = 0; i < 600; i++) {
+    car.steer = i > 240 ? 1 : 0;
+    stepCar(car, tr, DT, []);
+  }
+  assert.ok(car.speed / Math.abs(car.w) < 30, 'raio em regime com o volante todo: ' + (car.speed / Math.abs(car.w)).toFixed(1));
 });
 
 test('carro: terra tem menos aderencia (curva mais aberta) e a tracao traseira patina', () => {

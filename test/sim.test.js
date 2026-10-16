@@ -79,6 +79,18 @@ test('carro: parede nao e atravessada nem a 120 u/s (sem tunelamento)', () => {
   }
 });
 
+test('carro: volante todo em alta velocidade fecha a curva (nao subesterca por gastar a aderencia na tracao)', () => {
+  const tr = buildTrack({ ...testCircuit, bridges: [], baseSurface: 0 });
+  const car = makeCar(0);
+  placeCar(car, tr, 100, 0);
+  car.locked = false;
+  for (let i = 0; i < 600; i++) {
+    car.steer = i > 240 ? 1 : 0;
+    stepCar(car, tr, DT, []);
+  }
+  assert.ok(car.speed / Math.abs(car.w) < 24, 'raio em regime com o volante todo: ' + (car.speed / Math.abs(car.w)).toFixed(1));
+});
+
 test('carro: terra tem menos aderencia (curva mais aberta) e a tracao traseira patina', () => {
   const t2 = buildTrack({ ...testCircuit, bridges: [], baseSurface: 2 });
   const t0 = buildTrack({ ...testCircuit, bridges: [], baseSurface: 0 });

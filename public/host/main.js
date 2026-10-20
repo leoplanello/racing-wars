@@ -109,6 +109,7 @@ const editor = new DebugEditor({
 dbg.onEditor = () => editor.toggle();
 dbg.onSelectMode = () => editor.toggleSelect();
 dbg.onToggle = (on) => {
+  ui.setDebug(on);
   if (!on) {
     editor.hide();
     // a pasta Sonic so existe com o debug ligado: se estava aberta/selecionada, volta para a raiz
@@ -841,6 +842,7 @@ function ambient(g, dt) {
 }
 
 requestAnimationFrame(frame);
+ui.debug = dbg.on; // ?debug liga o debug antes do dbg.onToggle existir
 ui.splash();
 window.__rw = S; // depuracao
 window.__tracks = TRACKS;

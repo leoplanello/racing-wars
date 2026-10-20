@@ -28,6 +28,7 @@ export class UI {
     this.labelEls = new Map();
     this.dangerEls = new Map();
     this.bannerTimer = 0;
+    this.debug = false;
     this.screen.addEventListener('click', (e) => {
       const t = e.target.closest('[data-nav]');
       if (t) this.nav(t.dataset.nav, t.dataset.i !== undefined ? Number(t.dataset.i) : undefined);
@@ -43,11 +44,18 @@ export class UI {
   clear() { this.screen.innerHTML = ''; }
 
   splash() {
-    this.screen.innerHTML = `<div class="scr" data-nav="ok">
+    // o editor de mapa so aparece com o debug ligado (F3 ou ?debug)
+    this.screen.innerHTML = `<div class="scr splash" data-nav="ok">
       <div class="logo">RACING<br>WARS<small>ATÉ 8 JOGADORES · CELULAR É O CONTROLE</small></div>
       <button class="btn" data-nav="ok">▶ CLIQUE PARA COMEÇAR</button>
-      <a class="btn btn2" href="editor/" onclick="event.stopPropagation()">🗺 EDITOR DE MAPA</a>
+      ${this.debug ? '<a class="btn btn2" href="editor/" onclick="event.stopPropagation()">🗺 EDITOR DE MAPA</a>' : ''}
       <div class="hint">Isto libera o som. Depois escaneie o QR Code com o celular.</div></div>`;
+  }
+
+  /** Liga/desliga o debug: na tela inicial, mostra ou esconde o editor de mapa. */
+  setDebug(on) {
+    this.debug = on;
+    if (this.screen.querySelector('.splash')) this.splash();
   }
 
   lobby(o) {

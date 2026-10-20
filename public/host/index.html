@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Racing Wars</title>
+<link rel="icon" href="/host/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/host/host.css">
+<link rel="modulepreload" href="/host/main.js">
 <script type="importmap">
 { "imports": { "three": "/vendor/three/three.module.js", "three/addons/": "/vendor/three-addons/", "qrcode": "/vendor/qrcode.mjs" } }
 </script>
@@ -30,10 +32,30 @@
 <div id="screen"></div>
 <div id="banner"></div>
 <div id="debug" hidden></div>
+<div id="phone-gate" hidden style="position:fixed;inset:0;z-index:1000;overflow:auto;background:#0b0f1a;color:#fff;font:16px/1.5 system-ui,sans-serif;padding:24px 16px">
+  <div style="max-width:440px;margin:0 auto">
+    <h1 style="font-size:28px;margin:12px 0 8px">Abra no computador</h1>
+    <p>Esta é a <b>tela principal</b> do jogo, feita para um computador ou TV. Celular serve de controle, não de tela.</p>
+    <ol style="padding-left:20px">
+      <li>No computador, abra o endereço:<br><b id="phone-gate-url" style="word-break:break-all"></b></li>
+      <li>Clique em <b>Clique para começar</b>.</li>
+      <li>Escaneie o QR Code que aparece na tela com este celular para entrar como controle.</li>
+    </ol>
+    <p style="opacity:.7;font-size:14px">Já está no computador e chegou aqui? Use um navegador de computador, não o modo de celular.</p>
+  </div>
+</div>
 <div id="mutes">
   <button id="mute-music" type="button" title="Mutar música">🎵</button>
   <button id="mute-sfx" type="button" title="Mutar sons">🔊</button>
 </div>
-<script type="module" src="/host/main.js"></script>
+<script type="module">
+  // celular nao e a tela principal: mostra como abrir no computador e nao carrega o jogo
+  if (/Mobi|iPhone|iPod/i.test(navigator.userAgent)) {
+    document.getElementById('phone-gate-url').textContent = location.href.split(/[?#]/)[0];
+    document.getElementById('phone-gate').hidden = false;
+  } else {
+    import('/host/main.js');
+  }
+</script>
 </body>
 </html>

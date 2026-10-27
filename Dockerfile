@@ -1,6 +1,6 @@
 # Racing Wars em producao: servidor Node (arquivos estaticos + relay WebSocket das salas).
 # Os mapas SRB2Kart (public/tracks/srb2kart) sao locais e ficam fora da imagem (.dockerignore).
-FROM node:20.19-alpine
+FROM node:26.12.1-alpine
 
 ENV NODE_ENV=production PORT=3000
 WORKDIR /app

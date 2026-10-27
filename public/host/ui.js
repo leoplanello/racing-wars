@@ -2,6 +2,7 @@
 import qrcode from 'qrcode';
 import { COLORS, ITEM_ICON, cleanAvatar } from '/shared/protocol.js';
 
+const LOGO = new URL('./logo.png', import.meta.url).href;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /** Foto (data URL) ou emoji do perfil do celular; '' sem avatar. Revalida porque vem da rede. */
@@ -46,7 +47,7 @@ export class UI {
   splash() {
     // o editor de mapa so aparece com o debug ligado (F3 ou ?debug)
     this.screen.innerHTML = `<div class="scr splash" data-nav="ok">
-      <div class="logo">RACING<br>WARS<small>ATÉ 8 JOGADORES · CELULAR É O CONTROLE</small></div>
+      <div class="logo"><img src="${LOGO}" alt="" width="256" height="256">RACING<br>WARS<small>ATÉ 8 JOGADORES · CELULAR É O CONTROLE</small></div>
       <button class="btn" data-nav="ok">▶ CLIQUE PARA COMEÇAR</button>
       ${this.debug ? '<a class="btn btn2" href="editor/" onclick="event.stopPropagation()">🗺 EDITOR DE MAPA</a>' : ''}
       <div class="hint">Isto libera o som. Depois escaneie o QR Code com o celular.</div></div>`;
@@ -65,7 +66,7 @@ export class UI {
       return `<div class="slot on" style="--c:${COLORS[i].hex}">${avatarHtml(s.avatar) || '<span class="dot"></span>'}${esc(s.name)}<span class="tag">${tag}${s.connected === false ? ' · off' : ''}</span></div>`;
     }).join('');
     this.screen.innerHTML = `<div class="scr">
-      <div class="logo" style="font-size:min(7vw,70px)">RACING WARS</div>
+      <div class="logo" style="font-size:min(7vw,70px)"><img src="${LOGO}" alt="" width="256" height="256" style="display:inline-block;height:1.1em;margin:0 .3em -.15em 0">RACING WARS</div>
       <div class="lobby">
         <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
           <div class="qr">${o.qr}</div>

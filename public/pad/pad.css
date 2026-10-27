@@ -3,9 +3,9 @@
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none; font-family: var(--font); color: #fff; background: var(--bg); transition: background .25s; }
 [hidden] { display: none !important; }
 .view { position: fixed; inset: 0; }
-#join { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; text-align: center; background: radial-gradient(ellipse at 50% 20%, #2a3a5c, #0b0e16 80%); touch-action: auto; }
+#join { display: flex; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; gap: 12px; padding: 20px; text-align: center; background: radial-gradient(ellipse at 50% 20%, #2a3a5c, #0b0e16 80%); touch-action: auto; }
 #join p { margin: 0; color: #b9c3dc; }
-.logo { font-size: 44px; line-height: .9; font-weight: 900; font-style: italic; color: #ffd60a; text-shadow: 0 4px 0 #b33a00; }
+.logo { width: auto; height: clamp(56px, calc(30vh - 40px), 170px); aspect-ratio: 1; flex: none; filter: drop-shadow(0 6px 10px #0008); }
 input { width: min(320px, 90vw); font: 800 26px var(--font); padding: 12px; border-radius: 12px; border: 3px solid #ffffff30; background: #0006; color: #fff; text-align: center; text-transform: uppercase; outline: none; user-select: text; -webkit-user-select: text; }
 #name { font-size: 18px; text-transform: none; }
 input:focus { border-color: #ffd60a; }

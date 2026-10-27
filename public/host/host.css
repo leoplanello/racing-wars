@@ -159,3 +159,4 @@ body.split #hud .kill { top: auto; bottom: 8px; }
   .hint { line-height: 1.15; }
 }
 .tcard.folder { border-color: #ffd60a66; background: #1d2a44; }
+.logo img { display: block; margin: 0 auto 1vh; height: min(24vh, 220px); width: auto; transform: skew(6deg); filter: drop-shadow(0 6px 10px #0008); }

@@ -27,6 +27,10 @@ celulares (/pad) --WebSocket--> servidor Node <--WebSocket-- host (/ , tela prin
 - `boxes: [{x,z,h}]`: caixas de item avulsas (`h` = suspensa, só quem está no ar pega); `structures`: piso, posto, pórtico (`render/structures.js`).
 - `theme`: `kind:'city'`, `sky`, `fog`, `hemi`, `sun`, `exposure` (`scene.applyTheme`). `laps` opcional.
 
+## Logo (exceção a "sem assets binários")
+
+O logo é o único asset binário do projeto: `public/host/logo.png` (256x256, PNG de 256 cores, ~26 KB) e `public/host/favicon.png` (48x48, ~1,4 KB), reduzidos do arte original sem distorcer. As três páginas (`host`, `pad`, `editor`) o referenciam por `/host/...`; `tools/page.js` reescreve para caminho relativo e versionado (`_v/<ver>/`). Na tela principal o `ui.js` monta a URL com `import.meta.url`. Não adicionar outros binários sem registrar aqui.
+
 ## Pastas
 ```
 server/index.js        http estático + WebSocket relay + /api/lan

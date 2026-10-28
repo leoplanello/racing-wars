@@ -20,5 +20,7 @@ export function renderPage(html, prefix, config, ver) {
   const cfg = config ? `<script>window.RW=${JSON.stringify(config)};</script>\n` : '';
   const head = `${cfg}<script type="importmap">${JSON.stringify(map)}</script>\n`;
   if (!html.includes('</head>')) throw new Error('HTML sem </head>');
-  return html.replace('</head>', head + '</head>');
+  // antes do modulepreload: sem o importmap ja registrado o navegador resolve '/sim/' e '/shared/' sem versao (cache de 4 h da Cloudflare)
+  const at = html.search(/<link rel="modulepreload"/);
+  return at >= 0 ? html.slice(0, at) + head + html.slice(at) : html.replace('</head>', head + '</head>');
 }

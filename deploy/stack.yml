@@ -2,7 +2,7 @@
 # Atende em racing-wars.leoplanello.com e em leoplanello.com/racing-wars/ (o prefixo e removido
 # pelo Traefik; o app e independente de prefixo).
 #
-# Build (no servidor):  docker build -t racing-wars:0.1.6 .
+# Build (no servidor):  docker build -t racing-wars:0.1.7 .
 # Deploy:               docker stack deploy --resolve-image never -c deploy/stack.yml racing-wars
 #
 # replicas: 1 de proposito. As salas ficam na memoria do processo; mais de uma replica
@@ -11,7 +11,7 @@ version: "3.8"
 
 services:
   app:
-    image: racing-wars:0.1.6
+    image: racing-wars:0.1.7
     environment:
       PORT: "3000"
       MAX_ROOMS: "200"

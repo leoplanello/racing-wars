@@ -535,7 +535,7 @@ function handleEvents(events) {
         fx.explosion(e.x, e.z, big, y0);
         if (c) {
           const sp = Math.hypot(c.vx, c.vz) || 1;
-          debris.carBlast(e.x, e.z, parseInt(COLORS[c.color % 8].hex.slice(1), 16), c.vx, c.vz, gnd(e.x, e.z), big, c.vx / sp, c.vz / sp);
+          debris.carBlast(e.x, e.z, parseInt(COLORS[c.color].hex.slice(1), 16), c.vx, c.vz, gnd(e.x, e.z), big, c.vx / sp, c.vz / sp);
         }
         audio.play('explode', e.kind === 'missile' ? 2 : 1);
         cam.shake = Math.max(cam.shake, e.kind === 'cut' ? 1.6 : 3.4);

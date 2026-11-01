@@ -47,7 +47,7 @@ export function gridSlot(i) {
   return { back: row * RULES.gridRowGap + col * 2.5, side: col ? 1 : -1 };
 }
 
-/** Pontos por posicao na corrida (8 jogadores); a partir da 9a, 0. */
+/** Pontos por posicao na corrida (das 8 primeiras posicoes; a partir da 9a, 0, mesmo com ate 15 jogadores). */
 export const RACE_POINTS = [10, 8, 6, 5, 4, 3, 2, 1];
 
 /** Aplica a pontuacao da rodada. `deaths` = ids na ordem em que morreram. Retorna {id: delta}. */

@@ -4,6 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeRng } from '/sim/rng.js';
 import { buildScenery } from '/sim/scenery.js';
 import { gridSlot } from '/sim/game.js';
+import { MAX_PLAYERS } from '/shared/protocol.js';
 import * as TX from './textures.js';
 import { buildStartGantry } from './models.js';
 import { buildCity } from './city.js';
@@ -602,7 +603,7 @@ export function buildWorld(track, quality = 'high', opts = {}) {
 
     // vagas pintadas em "U" (abertas para a frente), uma por carro
     const slots = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < MAX_PLAYERS; i++) {
       const sl = gridSlot(i);
       const pr = -4 - sl.back;
       const p = track.pointAt(pr);

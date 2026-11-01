@@ -1,8 +1,8 @@
-// Teste de rede: host falso + 8 celulares falsos contra o servidor real (porta efemera).
+// Teste de rede: host falso + MAX_PLAYERS celulares falsos contra o servidor real (porta efemera).
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
 import { start } from '../server/app.js';
-import { encodeInput, HOST_INPUT, decodeHostInput } from '../shared/protocol.js';
+import { encodeInput, HOST_INPUT, decodeHostInput, MAX_PLAYERS } from '../shared/protocol.js';
 
 const app = await start(0);
 const url = `ws://127.0.0.1:${app.port}/ws`;
@@ -37,7 +37,7 @@ try {
   assert.match(code, /^[A-Z]{4}$/);
 
   const phones = [];
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < MAX_PLAYERS; i++) {
     const p = client();
     await p.open;
     p.send({ t: 'join', room: code, clientId: 'cid' + i, name: 'P' + i });
@@ -49,7 +49,7 @@ try {
     phones.push(p);
   }
 
-  // 9o celular recusado
+  // celular além do limite recusado
   const extra = client();
   await extra.open;
   extra.send({ t: 'join', room: code, clientId: 'extra' });
@@ -116,7 +116,7 @@ try {
   assert.equal(decodeHostInput(b1.bin).seq, 99, 'input da sala 1 so chega ao host 1');
   await assert.rejects(host2.next((m) => m.bin, 300), /timeout/, 'host 2 nao recebe input da sala 1');
 
-  console.log('smoke OK: salas', code, code2, '- 8 celulares, Master, binario, reconexao, sala cheia, 2 salas isoladas');
+  console.log('smoke OK: salas', code, code2, `- ${MAX_PLAYERS} celulares, Master, binario, reconexao, sala cheia, 2 salas isoladas`);
 } catch (e) {
   console.error('smoke FALHOU:', e);
   process.exitCode = 1;

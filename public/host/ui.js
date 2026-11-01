@@ -1,6 +1,6 @@
 // Interface DOM do host: menus, HUD, banners, rotulos e marcadores de perigo.
 import qrcode from 'qrcode';
-import { COLORS, ITEM_ICON, cleanAvatar } from '/shared/protocol.js';
+import { COLORS, ITEM_ICON, MAX_PLAYERS, cleanAvatar } from '/shared/protocol.js';
 
 const LOGO = new URL('./logo.png', import.meta.url).href;
 const $ = (id) => document.getElementById(id);
@@ -47,7 +47,7 @@ export class UI {
   splash() {
     // o editor de mapa so aparece com o debug ligado (F3 ou ?debug)
     this.screen.innerHTML = `<div class="scr splash" data-nav="ok">
-      <div class="logo"><img src="${LOGO}" alt="" width="256" height="256">RACING<br>WARS<small>ATÉ 8 JOGADORES · CELULAR É O CONTROLE</small></div>
+      <div class="logo"><img src="${LOGO}" alt="" width="256" height="256">RACING<br>WARS<small>ATÉ ${MAX_PLAYERS} JOGADORES · CELULAR É O CONTROLE</small></div>
       <button class="btn" data-nav="ok">▶ CLIQUE PARA COMEÇAR</button>
       ${this.debug ? '<a class="btn btn2" href="editor/" onclick="event.stopPropagation()">🗺 EDITOR DE MAPA</a>' : ''}
       <div class="hint">Isto libera o som. Depois escaneie o QR Code com o celular.</div></div>`;

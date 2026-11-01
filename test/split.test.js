@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { splitGrid, splitRects } from '../shared/layout.js';
+import { MAX_PLAYERS, COLORS } from '../shared/protocol.js';
 import { KartCamera, KART_CAM, kartFovV } from '../sim/camera.js';
 
 const near = (a, b, e = 1e-6) => assert.ok(Math.abs(a - b) <= e, `${a} != ${b}`);
 
-test('grade da tela dividida: 1 cheia, 2 empilhadas, 3-4 em 2x2, 5-6 em 3x2, 7-8 em 3x3', () => {
+test('grade da tela dividida: 1 cheia, 2 empilhadas, 3-4 em 2x2, 5-6 em 3x2, 7-9 em 3x3, 10-12 em 4x3, 13-16 em 4x4', () => {
   assert.deepEqual(splitGrid(1), [1, 1]);
   assert.deepEqual(splitGrid(2), [1, 2]);
   assert.deepEqual(splitGrid(3), [2, 2]);
@@ -13,11 +14,25 @@ test('grade da tela dividida: 1 cheia, 2 empilhadas, 3-4 em 2x2, 5-6 em 3x2, 7-8
   assert.deepEqual(splitGrid(5), [3, 2]);
   assert.deepEqual(splitGrid(6), [3, 2]);
   assert.deepEqual(splitGrid(7), [3, 3]);
-  assert.deepEqual(splitGrid(8), [3, 3]);
+  assert.deepEqual(splitGrid(9), [3, 3]);
+  assert.deepEqual(splitGrid(10), [4, 3]);
+  assert.deepEqual(splitGrid(12), [4, 3]);
+  assert.deepEqual(splitGrid(13), [4, 4]);
+  assert.deepEqual(splitGrid(16), [4, 4]);
+});
+
+test('MAX_PLAYERS cabe na grade (15 jogadores: 4x4 com 1 celula de sobra) e cada jogador tem cor propria', () => {
+  assert.equal(MAX_PLAYERS, 15);
+  assert.ok(COLORS.length >= MAX_PLAYERS, 'faltam cores para todos os jogadores');
+  assert.equal(new Set(COLORS.map((c) => c.hex)).size, COLORS.length, 'cores repetidas');
+  const L = splitRects(MAX_PLAYERS, 1920, 1080, 4);
+  assert.deepEqual([L.cols, L.rows], [4, 4]);
+  assert.equal(L.rects.length, MAX_PLAYERS);
+  assert.ok(L.spare && L.spare.w > 0, 'a celula livre (classificacao) precisa de espaco');
 });
 
 test('retangulos: cobrem a tela sem sobrepor e a sobra fica no fim', () => {
-  for (let n = 1; n <= 8; n++) {
+  for (let n = 1; n <= MAX_PLAYERS; n++) {
     const L = splitRects(n, 1600, 900, 4);
     assert.equal(L.rects.length, n);
     for (const r of L.rects) {
@@ -43,7 +58,7 @@ test('FOV da celula: ~59 em tela cheia 16:9; 2 jogadores alarga; sempre dentro d
   assert.ok(kartFovV(16 / 9, 1) > 55 && kartFovV(16 / 9, 1) < 62);
   // 2P (celula muito larga): o ajuste do SRB2Kart (tan x 1,7) alarga o FOV
   assert.ok(kartFovV(3.5, 2) > kartFovV(3.5, 4));
-  for (const a of [0.5, 1, 1.78, 3.5, 8]) for (const n of [1, 2, 4, 8]) {
+  for (const a of [0.5, 1, 1.78, 3.5, 8]) for (const n of [1, 2, 4, 8, 12, 15]) {
     const f = kartFovV(a, n);
     assert.ok(f >= KART_CAM.fovMin && f <= KART_CAM.fovMax);
   }

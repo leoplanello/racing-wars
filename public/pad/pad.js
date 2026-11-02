@@ -1,5 +1,5 @@
 // Controle do celular: direcao cega (metade esquerda) + item (metade direita).
-import { encodeInput, BTN_FIRE, BTN_AWAY, BTN_REV, cleanAvatar } from '/shared/protocol.js';
+import { encodeInput, BTN_FIRE, BTN_AWAY, BTN_REV, cleanAvatar, MAX_PLAYERS } from '/shared/protocol.js';
 import { wsUrl } from '/shared/wsurl.js';
 
 const $ = (id) => document.getElementById(id);
@@ -40,7 +40,7 @@ function connect() {
         S.joined = false;
         $('pad').hidden = true; $('join').hidden = false;
         document.body.classList.remove('landscape');
-        $('err').textContent = m.reason === 'noroom' ? 'Sala não encontrada. Confira o código.' : m.reason === 'busy' ? 'Muitas tentativas. Aguarde um instante.' : 'Sala cheia (8 jogadores).';
+        $('err').textContent = m.reason === 'noroom' ? 'Sala não encontrada. Confira o código.' : m.reason === 'busy' ? 'Muitas tentativas. Aguarde um instante.' : `Sala cheia (${MAX_PLAYERS} jogadores).`;
         S.room = '';
         ws.onclose = null;
         ws.close();

@@ -1,7 +1,7 @@
 {
   "name": "racing-wars",
-  "version": "0.1.7",
-  "description": "Racing Wars - corrida top-down para ate 8 jogadores com celulares como controle.",
+  "version": "0.2.0",
+  "description": "Racing Wars - corrida top-down para ate 15 jogadores com celulares como controle.",
   "type": "module",
   "private": true,
   "scripts": {

@@ -1,6 +1,6 @@
 # Racing Wars
 
-Corrida *top-down* para até 8 jogadores. A tela principal roda no navegador (PC ou TV) e **cada celular vira um controle** (escaneie o QR Code). Inspirado no Racing Wars da AirConsole (Big Hut Games): picapes de brinquedo em pistas 3D, câmera atrás do pelotão e eliminação de quem fica para trás da câmera.
+Corrida *top-down* para até 15 jogadores. A tela principal roda no navegador (PC ou TV) e **cada celular vira um controle** (escaneie o QR Code). Inspirado no Racing Wars da AirConsole (Big Hut Games): picapes de brinquedo em pistas 3D, câmera atrás do pelotão e eliminação de quem fica para trás da câmera.
 
 ## Como rodar
 
@@ -39,7 +39,7 @@ No Windows também dá para dar dois cliques em `Iniciar Racing Wars.bat`.
 ## Testes
 ```bash
 npm test         # simulação (regras, pista, câmera, pontuação)
-npm run smoke    # servidor + host falso + 8 celulares falsos
+npm run smoke    # servidor + host falso + 15 celulares falsos
 npm run phones   # enche uma sala aberta com celulares simulados
 ```
 

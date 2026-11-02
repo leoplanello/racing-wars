@@ -275,7 +275,8 @@ setInterval(syncPhones, 120);
 async function loadIps() {
   if (window.RW?.static) { refresh(); return; }
   try {
-    const r = await (await fetch(new URL('api/lan', document.baseURI))).json();
+    // a raiz do app (sem /host/index.html), como o padUrl: funciona com prefixo (/racing-wars/) e em /host/
+    const r = await (await fetch(new URL('api/lan', document.baseURI.replace(/host\/(index\.html)?$/, '')))).json();
     S.ips = r.ips; S.port = r.port;
   } catch {}
   refresh();

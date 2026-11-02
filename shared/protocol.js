@@ -1,6 +1,6 @@
 // Protocolo compartilhado entre servidor, host e controle (roda no navegador e no Node).
 
-export const MAX_PLAYERS = 8;
+export const MAX_PLAYERS = 15;
 export const ROOM_CODE_LEN = 4;
 export const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // sem I e O
 
@@ -11,7 +11,7 @@ export const BTN_FIRE = 1;
 export const BTN_AWAY = 2;
 export const BTN_REV = 4; // as duas setas juntas = re em linha reta
 
-// Cores dos 8 carros (tons primarios/secundarios puros para leitura periferica).
+// Cores dos 15 carros: as 8 primarias/secundarias puras e 7 extras (neutras, douradas e escuras) para chegar a 15 sem repetir.
 export const COLORS = [
   { name: 'Vermelho', hex: '#e8202a' },
   { name: 'Azul', hex: '#1f6bff' },
@@ -21,6 +21,13 @@ export const COLORS = [
   { name: 'Roxo', hex: '#9b3dff' },
   { name: 'Ciano', hex: '#12d3e6' },
   { name: 'Rosa', hex: '#ff4fa3' },
+  { name: 'Branco', hex: '#f4f4f4' },
+  { name: 'Lima', hex: '#b5ff2e' },
+  { name: 'Marrom', hex: '#9a6a3c' },
+  { name: 'Cinza', hex: '#8c939c' },
+  { name: 'Dourado', hex: '#e0b43a' },
+  { name: 'Vinho', hex: '#8e1b3c' },
+  { name: 'Turquesa', hex: '#2ee6b8' },
 ];
 
 export const ITEMS = ['nitro', 'mine', 'missile', 'whomp', 'ice'];

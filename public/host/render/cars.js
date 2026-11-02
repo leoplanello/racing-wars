@@ -43,7 +43,7 @@ export class Actors {
     this.clear();
     this.track = game.track;
     for (const c of game.cars) {
-      const truck = buildTruck(COLORS[c.color % 8].hex);
+      const truck = buildTruck(COLORS[c.color].hex);
       truck.group.scale.setScalar(CAR_SCALE);
       this.root.add(truck.group);
       let blob = null;

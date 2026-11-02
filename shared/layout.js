@@ -1,5 +1,5 @@
 // Layout da tela dividida (puro, sem DOM): quantas colunas/linhas para n jogadores e o retangulo de cada celula.
-// 1 = tela cheia; 2 = uma em cima da outra (como o SRB2Kart); 3-4 = 2x2; 5-6 = 3x2; 7-9 = 3x3.
+// 1 = tela cheia; 2 = uma em cima da outra (como o SRB2Kart); 3-4 = 2x2; 5-6 = 3x2; 7-9 = 3x3; 10-12 = 4x3; 13-16 = 4x4.
 // Coordenadas em pixels CSS com a origem no canto superior esquerdo.
 
 /** [colunas, linhas] da grade para n celulas. */
@@ -8,7 +8,9 @@ export function splitGrid(n) {
   if (n === 2) return [1, 2];
   if (n <= 4) return [2, 2];
   if (n <= 6) return [3, 2];
-  return [3, 3];
+  if (n <= 9) return [3, 3];
+  if (n <= 12) return [4, 3];
+  return [4, 4];
 }
 
 /**

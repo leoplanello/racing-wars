@@ -5,7 +5,7 @@ Jogo web: host (tela principal) + celulares como controle. UI em português (pt-
 ## Comandos
 - `npm start`: servidor em http://localhost:3000
 - `npm test`: testes da simulação (`node --test test/`)
-- `npm run smoke`: teste de rede com host e 8 celulares falsos
+- `npm run smoke`: teste de rede com host e 15 celulares falsos (MAX_PLAYERS)
 
 ## Convenções
 - `sim/` e `shared/` não podem importar DOM, Three nem APIs só do Node: rodam nos dois ambientes.
